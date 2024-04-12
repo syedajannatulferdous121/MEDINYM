@@ -1,52 +1,30 @@
-/*!
- * Bootstrap v5.0.0 (https://getbootstrap.com/)
- * Copyright 2011-2021 The Bootstrap Authors
- * Copyright 2011-2021 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/main/LICENSE)
- */
+/******* Customized Bootstrap ********/
 
-// scss-docs-start import-stack
-// Configuration
-@import "functions";
-@import "variables";
-@import "mixins";
-@import "utilities";
+$primary: #00B074;
+$secondary: #2B9BFF;
+$light: #EFFDF5;
+$dark: #2B3940;
 
-// Layout & components
-@import "root";
-@import "reboot";
-@import "type";
-@import "images";
-@import "containers";
-@import "grid";
-@import "tables";
-@import "forms";
-@import "buttons";
-@import "transitions";
-@import "dropdown";
-@import "button-group";
-@import "nav";
-@import "navbar";
-@import "card";
-@import "accordion";
-@import "breadcrumb";
-@import "pagination";
-@import "badge";
-@import "alert";
-@import "progress";
-@import "list-group";
-@import "close";
-@import "toasts";
-@import "modal";
-@import "tooltip";
-@import "popover";
-@import "carousel";
-@import "spinners";
-@import "offcanvas";
+$font-family-base: 'Heebo', sans-serif;
 
-// Helpers
-@import "helpers";
+$headings-font-family: 'Inter', sans-serif;
 
-// Utilities
-@import "utilities/api";
-// scss-docs-end import-stack
+$body-bg: $light;
+
+$body-color: #666565;
+
+$headings-color: $dark;
+
+$headings-font-weight: 700;
+
+$display-font-weight: 800;
+
+$enable-responsive-font-sizes: true;
+
+$border-radius: 2px;
+
+$link-decoration: none;
+
+$enable-negative-margins: true;
+
+@import "bootstrap/scss/bootstrap";
