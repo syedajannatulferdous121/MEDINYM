@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>MEDINYM</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="" name="keywords">
+    <meta content="" name="description">
+
+    <!-- Favicon -->
+    <link href="img/favicon.ico" rel="icon">
+
+    <!-- Include Material Icons font -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <!-- Google Web Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600&family=Inter:wght@700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icon Font Stylesheet -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Libraries Stylesheet -->
+    <link href="lib/animate/animate.min.css" rel="stylesheet">
+    <link href="lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+
+    <!-- Customized Bootstrap Stylesheet -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Template Stylesheet -->
+    <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container-xxl bg-white p-0">
+        <!-- Spinner Start -->
+        <div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+        <!-- Spinner End -->
+
+
+        <!-- Navbar Start -->
+        <nav class="navbar navbar-expand-lg bg-white navbar-light shadow sticky-top p-0">
+            <a href="index.html" class="navbar-brand d-flex align-items-center text-center py-0 px-4 px-lg-5">
+                <img src="img/sample 71.png" alt="Logo" class="me-2" style="height: 70px;">
+                
+                 <!-- Add your logo image here -->
+                
+            </a>
+            <button type="button" class="navbar-toggler me-4" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarCollapse">
+                <div class="navbar-nav ms-auto p-4 p-lg-0">
+                    <a href="index.html" class="nav-item nav-link active">Home</a>
+                    <a href="about.html" class="nav-item nav-link">About</a>
+                    
+                    <div class="nav-item dropdown">
+                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">Services</a>
+                        <div class="dropdown-menu rounded-0 m-0">
+                            <a href="OutliersAnalysis.html" class="dropdown-item">Outliers Analysis</a>
+                            <a href="De-identification.html" class="dropdown-item">De-identification</a>
+                            <a href="Anonymization.html" class="dropdown-item">Anonymization</a>
+                        </div>
+                    </div>
+                    <a href="contact.html" class="nav-item nav-link">Contact</a>
+                </div>
+                <a href="features.html" class="btn btn-primary rounded-0 py-4 px-lg-5 d-none d-lg-block">Upcoming Features<i class="fa fa-arrow-right ms-3"></i></a>
+            </div>
+        </nav>
+        <!-- Navbar End -->
+
+
+        <!-- Carousel Start -->
+        <div class="container-fluid p-0">
+            <div class="owl-carousel header-carousel position-relative">
+                <div class="owl-carousel-item position-relative">
+                    <img class="img-fluid" src="img/carousel-1.jpeg" alt="">
+                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style="background: rgba(43, 57, 64, .5);">
+                        <div class="container">
+                            <div class="row justify-content-start">
+                                <div class="col-10 col-lg-8">
+                                    <h1 class="display-3 text-white animated slideInDown mb-4">Unlocking AI Potential Safely: The Medinym Project</h1>
+                                    <p class="fs-5 fw-medium text-white mb-4 pb-2">Empowering AI Advancements with Medinym's Data Security Solutions</p>
+                                    <a href="motivation.html" class="btn btn-primary py-md-3 px-md-5 me-3 animated slideInLeft">Motivation</a>
+                                    <a href="goals.html" class="btn btn-secondary py-md-3 px-md-5 animated slideInRight">Goal</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="owl-carousel-item position-relative">
+                    <img class="img-fluid" src="img/carousel-2.jpeg" alt="">
+                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" style="background: rgba(43, 57, 64, .5);">
+                        <div class="container">
+                            <div class="row justify-content-start">
+                                <div class="col-10 col-lg-8">
+                                    <h1 class="display-3 text-white animated slideInDown mb-4">Medinym: Innovating AI for Secure Healthcare Solutions</h1>
+                                    <p class="fs-5 fw-medium text-white mb-4 pb-2">Enhancing Patient Data Privacy and Access with Advanced Anonymization Techniques.</p>
+                                    <a href="motivation.html" class="btn btn-primary py-md-3 px-md-5 me-3 animated slideInLeft">Motivation</a>
+                                    <a href="goals.html" class="btn btn-secondary py-md-3 px-md-5 animated slideInRight">Goal</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Carousel End -->
+
+
+
+        <!-- Category Start -->
+<div class="container-xxl py-5">
+    <div class="container">
+        <h1 class="text-center mb-5 wow fadeInUp" data-wow-delay="0.1s">Our Services</h1>
+        <div class="row g-4">
+            <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.1s">
+                <div class="cat-item rounded p-4">
+                    <i class="fas fa-lock fa-3x text-primary mb-4"></i>
+                    <h6 class="mb-3">Anonymization</h6>
+                    <a href="#" onclick="openModal('Anonymization'); event.preventDefault();" class="btn btn-primary">Learn More</a>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.3s">
+                <div class="cat-item rounded p-4">
+                    <i class="fas fa-users fa-3x text-primary mb-4"></i>
+                    <h6 class="mb-3">Ethical Data Handling</h6>
+                    <a href="#" onclick="openModal('Ethical Data Handling') ; event.preventDefault();" class="btn btn-primary">Learn More</a>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.5s">
+                <div class="cat-item rounded p-4">
+                    <i class="fas fa-chart-line fa-3x text-primary mb-4"></i>
+                    <h6 class="mb-3">Outliers Analysis</h6>
+                    <a href="#" onclick="openModal('Outliers Analysis'); event.preventDefault();" class="btn btn-primary">Learn More</a>
+                </div>
+            </div>
+            <div class="col-lg-3 col-sm-6 wow fadeInUp" data-wow-delay="0.7s">
+                <div class="cat-item rounded p-4">
+                   <i class="fas fa-eye-slash fa-3x text-primary mb-4"></i>
+                    <h6 class="mb-3">De-identification</h6>
+                    <a href="#" onclick="openModal('De-identification'); event.preventDefault();" class="btn btn-primary">Learn More</a>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+<!-- The Modal -->
+<div id="myModal" class="modal">
+    <!-- Modal content -->
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <p id="modalContent"></p>
+    </div>
+</div>
+
+<style>
+/* Modal Content */
+.modal-content {
+    background-color: #fff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Close Button */
+.close {
+    color: #aaa;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 24px;
+    transition: color 0.3s ease;
+}
+
+.close:hover {
+    color: #333;
+}
+
+/* Modal Header */
+.modal-content h2 {
+    color: #333;
+    font-size: 28px;
+    margin-bottom: 20px;
+}
+
+/* Modal Body Text */
+.modal-content p {
+    color: #666;
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+/* Background Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Modal */
+.modal {
+    position: relative;
+    z-index: 9999;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Modal Animation */
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-50px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-content {
+    animation: modalFadeIn 0.3s ease forwards;
+}
+
+
+
+</style>
+
+<script>
+// Get the modal
+var modal = document.getElementById("myModal");
+
+// Function to open the modal with specific content
+function openModal(category) {
+    var modalContent = document.getElementById("modalContent");
+    // Set the content based on the category
+    switch (category) {
+        case 'Anonymization':
+            modalContent.innerHTML = "<h2>Anonymization</h2> <p>Anonymization is essential in our project, it guarantees patient privacy by removing personal identifiers from data while retaining its analytical value. Through this process, we uphold confidentiality standards, adhere to regulations, and empower secure, ethical research and analysis using healthcare data.</p>";
+            break;
+        case 'Ethical Data Handling':
+            modalContent.innerHTML = "<h2>Ethical Data Handling</h2> <p>Ethical principles of fairness, transparency, and accountability are upheld throughout the project's data handling practices. This includes respecting patient autonomy and rights in decision-making regarding data anonymization, as well as promoting responsible data management practices to ensure the ethical use of healthcare data for research and analysis.</p>";
+            break;
+        case 'Outliers Analysis':
+            modalContent.innerHTML = "<h2>Outliers Analysis</h2> <p>Integral to our project, outliers analysis involves identifying and scrutinizing data points that deviate significantly from the norm. By employing statistical methods and machine learning algorithms, we aim to detect anomalies effectively, ensuring the accuracy and reliability of our data-driven insights and decision-making processes.</p>";
+            break;
+        case 'De-identification':
+            modalContent.innerHTML = "<h2>De-identification</h2><p>In our project, de-identification is paramount. It involves removing or obscuring personally identifiable information from datasets while retaining their utility for analysis. By employing robust de-identification techniques, we safeguard patient privacy and comply with regulatory standards, enabling secure and ethical use of healthcare data for research and analysis.</p>";
+            break;
+        
+        
+        
+        default:
+            modalContent.innerHTML = "<h2>Default Category</h2><p>Default modal content.</p>";
+            break;
+    }
+    modal.style.display = "block";
+}
+
+// Function to close the modal
+function closeModal() {
+    modal.style.display = "none";
+}
+
+// Close the modal when clicking outside of it
+window.onclick = function(event) {
+    if (event.target == modal) {
+        closeModal();
+    }
+}
+</script>
+
+
+        <!-- Category End -->
+
+
+        <!-- Securing Healthcare Data Integrity Start -->
+        <div class="container-xxl py-5">
+            <div class="container">
+                <div class="row g-5 align-items-center">
+                    <div class="col-lg-6 wow fadeIn" data-wow-delay="0.1s">
+                        <div class="row g-0 about-bg rounded overflow-hidden">
+                            <div class="col-6 text-start">
+                                <img class="img-fluid w-100" src="img/about-1.avif">
+                            </div>
+                            <div class="col-6 text-start">
+                                <img class="img-fluid" src="img/about-2.webp" style="width: 85%; margin-top: 15%;">
+                            </div>
+                            <div class="col-6 text-end">
+                                <img class="img-fluid" src="img/about-3.avif" style="width: 85%;">
+                            </div>
+                            <div class="col-6 text-end">
+                                <img class="img-fluid w-100" src="img/about-4.png">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 wow fadeIn" data-wow-delay="0.5s">
+                        <h1 class="mb-4">Securing Healthcare Data Integrity</h1>
+                        <p class="mb-4">We're Your Trusted Partner in Healthcare Data Security
+                            <br><br>
+                        At MEDINYM, we're committed to elevating healthcare data security to new heights, ensuring patient privacy and regulatory compliance are upheld at every step. Our innovative solutions are designed to fortify healthcare institutions against data breaches and unauthorized access, fostering trust and confidence in patient care.</p>
+                        <p><i class="fa fa-check text-primary me-3"></i>
+Securing patient data with advanced encryption and access controls, our healthcare technology project ensures utmost protection against cyber threats and breaches.</p>
+                        <p><i class="fa fa-check text-primary me-3"></i>Our advanced algorithms ensure the seamless removal of identifiable patient information while preserving data integrity, enhancing healthcare research efficacy.</p>
+                        <p><i class="fa fa-check text-primary me-3"></i>Promoting ethical data governance, we advocate for transparency, accountability, and patient privacy, fostering trust and confidence among stakeholders in healthcare settings.</p>
+
+                        <p><i class="fa fa-check text-primary me-3"></i>
+Facilitating secure data sharing and collaboration among healthcare stakeholders, prioritizing privacy and confidentiality through encrypted channels and protocols.</p>
+
+
+<p>Join us in our mission to secure healthcare data integrity and protect patient privacy for a healthier and more resilient healthcare ecosystem.</p>
+               
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- The Modal -->
+<div id="myModal" class="modal">
+    <!-- Modal content -->
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div id="modalContent">
+            <!-- Content to be shown in the modal -->
+        </div>
+    </div>
+</div>
+
+<style>
+/* Modal Styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 9999; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+}
+
+/* Modal Content */
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+    max-width: 500px; /* Max width */
+    border-radius: 10px;
+}
+
+/* Close Button */
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+</style>
+
+
+
+        <!-- Securing Healthcare Data Integrity End -->
+
+
+        <!-- Publications Start -->
+        <div class="container-xxl py-5">
+            <div class="container">
+                <h1 class="text-center mb-5 wow fadeInUp" data-wow-delay="0.1s">Publications</h1>
+                <div class="tab-class text-center wow fadeInUp" data-wow-delay="0.3s">
+                    
+                    <div class="tab-content">
+                        <div id="tab-1" class="tab-pane fade show p-0 active">
+                            <div class="job-item p-4 mb-4">
+                                <div class="row g-4">
+                                    <div class="col-sm-12 col-md-8 d-flex align-items-center">
+                                        <img class="flex-shrink-0 img-fluid border rounded" src="img/com-logo-1.jpeg" alt="" style="width: 80px; height: 80px;">
+                                        <div class="text-start ps-4">
+                                            <h5 class="mb-3">How Risky is Multimodal Fake News Detection?</h5>
+                                            
+                                            <p>Khamsehashari, Razieh; Schmitt, Vera; Polzehl, Tim; Mohtaj, Salar; Moller, Sebastian How Risky is Multimodal Fake News Detection? A Review of Cross-Modal Learning Approaches under EU Al Act Constrains 3rd Symposium on Security and Privacy in Speech CommunicationausSPSC, Seite 01-10 Herausgeber: ISCA, Dublin, Irland August 2023</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-12 col-md-4 d-flex flex-column align-items-start align-items-md-end justify-content-center">
+                                        <div class="d-flex mb-3">
+                                            <a class="btn btn-light btn-square me-3" href=""><i class="far fa-heart text-primary"></i></a>
+                                            <a class="btn btn-primary" href="https://www.isca-archive.org/spsc_2023/khamsehashari23_spsc.html">Read Here</a>
+                                        </div>
+                                        <small class="text-truncate"><i class="far fa-calendar-alt text-primary me-2"></i>Date: August, 2023</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="job-item p-4 mb-4">
+                                <div class="row g-4">
+                                    <div class="col-sm-12 col-md-8 d-flex align-items-center">
+                                        <img class="flex-shrink-0 img-fluid border rounded" src="img/com-logo-2.webp" alt="" style="width: 80px; height: 80px;">
+                                        <div class="text-start ps-4">
+                                            <h5 class="mb-3">Unraveling the Hangry Rater: Non-linear Effects of Hunger on Multimedia Quality Perception</h5>
+                                            
+                                            <p> Spang, Robert P.; Wardah, Wafaa; Schmitt, Vera; Möller, Sebastian Unraveling the Hangry Rater: Non-linear Effects of Hunger on Multimedia Quality Perception 2023 15th International Conference on Quality of Multimedia Experience (QoMEX), Seite 228-231 Juni 2023 </p>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-12 col-md-4 d-flex flex-column align-items-start align-items-md-end justify-content-center">
+                                        <div class="d-flex mb-3">
+                                            <a class="btn btn-light btn-square me-3" href=""><i class="far fa-heart text-primary"></i></a>
+                                            <a class="btn btn-primary" href="https://ieeexplore.ieee.org/document/10178644">Read Here</a>
+                                        </div>
+                                        <small class="text-truncate"><i class="far fa-calendar-alt text-primary me-2"></i>Date: June, 2023</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="job-item p-4 mb-4">
+                                <div class="row g-4">
+                                    <div class="col-sm-12 col-md-8 d-flex align-items-center">
+                                        <img class="flex-shrink-0 img-fluid border rounded" src="img/com-logo-3.jpeg" alt="" style="width: 80px; height: 80px;">
+                                        <div class="text-start ps-4">
+                                            <h5 class="mb-3">Comparing Simulated and Real Conversations for QoE Assessments: Insights from ARKit-Based Facial Configuration Analyses</h5>
+                                            
+                                            <p> Spang, Robert P.; Wardah, Wafaa; Schmitt, Vera; Möller, Sebastian Comparing Simulated and Real Conversations for QoE Assessments: Insights from ARKit-Based Facial Configuration Analyses 2023 15th International Conference on Quality of Multimedia Experience (QoMEX), Seite 224-227 Juni 2023 </p>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-12 col-md-4 d-flex flex-column align-items-start align-items-md-end justify-content-center">
+                                        <div class="d-flex mb-3">
+                                            <a class="btn btn-light btn-square me-3" href=""><i class="far fa-heart text-primary"></i></a>
+                                            <a class="btn btn-primary" href="https://ieeexplore.ieee.org/document/10178587">Read Here</a>
+                                        </div>
+                                        <small class="text-truncate"><i class="far fa-calendar-alt text-primary me-2"></i>Date: June, 2023</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            </div>
+                            
+                            <a class="btn btn-primary py-3 px-5" href=""> Read More Publications</a>
+                        </div>
+                        
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Publications End -->
+
+
+        
+        
+
+        <!-- Footer Start -->
+        <div class="container-fluid bg-dark text-white-50 footer pt-5 mt-5 wow fadeIn" data-wow-delay="0.1s">
+            <div class="container py-5">
+                <div class="row g-5">
+                    <div class="col-lg-3 col-md-6">
+                        <h5 class="text-white mb-4">Company</h5>
+                        <a class="btn btn-link text-white-50" href="">About Us</a>
+                        <a class="btn btn-link text-white-50" href="">Contact Us</a>
+                        <a class="btn btn-link text-white-50" href="">Our Services</a>
+                        <a class="btn btn-link text-white-50" href="">Privacy Policy</a>
+                        <a class="btn btn-link text-white-50" href="">Terms & Condition</a>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <h5 class="text-white mb-4">Quick Links</h5>
+                        <a class="btn btn-link text-white-50" href="">About Us</a>
+                        <a class="btn btn-link text-white-50" href="">Contact Us</a>
+                        <a class="btn btn-link text-white-50" href="">Our Services</a>
+                        <a class="btn btn-link text-white-50" href="">Privacy Policy</a>
+                        <a class="btn btn-link text-white-50" href="">Terms & Condition</a>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <h5 class="text-white mb-4">Contact</h5>
+                        <p class="mb-2"><i class="fa fa-map-marker-alt me-3"></i>123 Street, Berlin, Germany</p>
+                        <p class="mb-2"><i class="fa fa-phone-alt me-3"></i>+49 111 1111111</p>
+                        <p class="mb-2"><i class="fa fa-envelope me-3"></i>info@example.com</p>
+                        <div class="d-flex pt-2">
+                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-twitter"></i></a>
+                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-facebook-f"></i></a>
+                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-youtube"></i></a>
+                            <a class="btn btn-outline-light btn-social" href=""><i class="fab fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <h5 class="text-white mb-4">Newsletter</h5>
+                        <p>Stay Protected, Stay Informed: Join Our Newsletter!</p>
+                        <div class="position-relative mx-auto" style="max-width: 400px;">
+                            <input class="form-control bg-transparent w-100 py-3 ps-4 pe-5" type="text" placeholder="Your email">
+                            <button type="button" class="btn btn-primary py-2 position-absolute top-0 end-0 mt-2 me-2">SignUp</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="copyright">
+                    <div class="row">
+                        <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                            &copy; <a class="border-bottom" href="index.html">MEDINYM</a>, All Right Reserved. 
+							
+							
+							Designed By <a class="border-bottom" href="https://www.dfki.de/web">DFKI</a>
+                        </div>
+                        <div class="col-md-6 text-center text-md-end">
+                            <div class="footer-menu">
+                                <a href="">Home</a>
+                                <a href="">Cookies</a>
+                                <a href="">Help</a>
+                                <a href="">FQAs</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Footer End -->
+
+
+        <!-- Back to Top -->
+        <a href="#" class="btn btn-lg btn-primary btn-lg-square back-to-top"><i class="bi bi-arrow-up"></i></a>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="lib/wow/wow.min.js"></script>
+    <script src="lib/easing/easing.min.js"></script>
+    <script src="lib/waypoints/waypoints.min.js"></script>
+    <script src="lib/owlcarousel/owl.carousel.min.js"></script>
+
+    <!-- Template Javascript -->
+    <script src="js/main.js"></script>
+</body>
+
+</html>
