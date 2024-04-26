@@ -464,6 +464,10 @@ def index():
                     for (var i = 0; i < numTerms; i++) {
                         termRarityScores.push((osidfScores[sortedWords[i]]).toFixed(2));
                     }
+                    // Sort termRarityScores in ascending order
+        termRarityScores.sort(function(a, b) {
+            return b - a;
+        });
                     $('#termRarityScore_' + index).text(termRarityScores.join(', '));
                 });
             }
@@ -487,6 +491,7 @@ def index():
     </body>
     </html>
     """)
+
 
 
 if __name__ == '__main__':
