@@ -4,6 +4,7 @@ import re
 import math
 import nltk
 from nltk.corpus import stopwords
+import time
 
 # Download the stopwords corpus if not already downloaded
 nltk.download('stopwords')
@@ -11,85 +12,66 @@ nltk.download('stopwords')
 app = Flask(__name__)
 
 
+# Function to calculate the Outlier Score (OS) and Inverse Document Frequency (IDF)
 def calculate_OS_IDF(collection):
     # Initialize dictionaries to store document frequencies (DF) and inverse document frequencies (IDF)
-    document_frequencies = {}  # Stores how many times each term appears in the entire collection of documents
-    inverse_document_frequencies = {}  # Stores the IDF value for each term
-
-    # For each document it will initialize the array to store IDF values.
-    idfs_arr = []
+    document_frequencies = {}
+    inverse_document_frequencies = {}
 
     # The documents tokenize into terms.
-    tokenized_documents = [row.split() for row in collection]
+    tokenized_documents = [doc.split() for doc in collection]
 
     # Calculate the document frequency (DF) for each term
     for doc in tokenized_documents:
-        unique_terms = set(doc)  # Find unique terms in the document
-        # Update the document frequencies dictionary:
-        # If the term already exists, increment its count by 1; otherwise, initialize it with count 1
+        unique_terms = set(doc)
         for term in unique_terms:
             document_frequencies[term] = document_frequencies.get(term, 0) + 1
 
-    # Total number of documents (each rows count as each document)
+    # Total number of documents (each row counts as one document)
     total_documents = len(collection)
 
     # Calculate IDF score for each term
     for term, df in document_frequencies.items():
-        # Calculate IDF using the formula: log(total_documents / (1 + term_frequency))
-        inverse_document_frequencies[term] = math.log(total_documents / (1 + df))
+        inverse_document_frequencies[term] = round(math.log(total_documents / (1 + df)), 2)
 
-    # Calculate average of IDF per document (each rows count as each document)
+    # Calculate average IDF per document (each row counts as one document)
     average_term_idf_per_document = []
+    max_idf_scores = []
+    rarest_terms = []
+
     for doc in tokenized_documents:
-        # take the IDF values for terms in the document
-        doc_idf_values = [inverse_document_frequencies[term] for term in doc if term in inverse_document_frequencies]
+        doc_idf_values = [inverse_document_frequencies.get(term, 0) for term in doc]
         if doc_idf_values:
-            # Calculate the average IDF score per term
-            avg_idf = sum(doc_idf_values) / len(doc)
+            avg_idf = round(sum(doc_idf_values) / len(doc), 2)
+            sorted_terms = sorted(set(doc), key=lambda term: -inverse_document_frequencies.get(term, 0))
+            rarest_term = ', '.join(sorted_terms[:10])
+            max_idf = [inverse_document_frequencies.get(term, 0) for term in sorted_terms[:10]]
         else:
-            avg_idf = 0  # Set to 0 if there are no valid terms in the document
+            avg_idf = 0
+            max_idf = [0] * 10
+            rarest_term = ""
 
         average_term_idf_per_document.append(avg_idf)
-        idfs_arr.append(doc_idf_values)  # Append the average IDF score for the document to the list
-    # Create a DataFrame to display the output in a tabular format
-    term_idfs_df = pd.DataFrame(
-        {"Terms": tokenized_documents, "Term_IDFs": idfs_arr})  # DataFrame is created to organize the IDF scores for each term in each document. It has two columns: "Terms" (each document is represented as a list of terms) and "Term_IDFs" (IDF values corresponding to each term)
-    return pd.Series(average_term_idf_per_document), term_idfs_df  # Storing the average IDF scores
+        max_idf_scores.append(max_idf)
+        rarest_terms.append(rarest_term)
+
+    return average_term_idf_per_document, max_idf_scores, rarest_terms
 
 
-def get_rare_terms(term_idfs):
-    rare_terms = []
-    for index, row in term_idfs.iterrows():
-        terms = row['Terms']
-        term_idfs_values = row['Term_IDFs']
-        for term, idf_values in zip(terms, term_idfs_values):
-            if idf_values == 0:
-                rare_terms.append((term, idf_values))  # Store both term and IDF value
-    return rare_terms
-
-
+# Function to preprocess each document
 def preprocess_document(doc):
-    """
-    Apply preprocessing steps to the document.
-    """
-    # Remove de-identified PHI data
     doc = re.sub(r'\[\*\*.*?\*\*\]', ' ', doc)
-    # Remove numerical values
     doc = re.sub(r'\b\d+\b', ' ', doc)
-    # Remove all non-alphanumeric characters except spaces
     doc = re.sub(r'[^a-zA-Z0-9\s]', ' ', doc)
-    # Remove extra spaces
     doc = re.sub(r'\s+', ' ', doc)
-    # Lowercase the text
     doc = doc.lower()
 
-    # Remove stop words more effectively
     stop_words = set(stopwords.words('english'))
     tokens = doc.split()
     filtered_tokens = [word for word in tokens if word not in stop_words]
     doc = ' '.join(filtered_tokens)
 
-    return doc.strip()  # returns the processed document, Strip leading and trailing whitespaces
+    return doc.strip()
 
 
 @app.route('/upload', methods=['POST'])
@@ -104,148 +86,321 @@ def upload_csv():
 
         df = pd.read_csv(file)
 
-        # follow preprocessing for each cell or element in the dataframe
-        df = df.applymap(preprocess_document)
+        if len(df.columns) != 1:
+            return render_template_string("<h2>Please provide only a one-column dataset</h2>")
 
-        # Flatten the dataframe to a list of documents
+        autocorrect = request.form.get('autocorrect') == '1'
+
+        df = df.applymap(preprocess_document)
         preprocessed_documents = df.values.flatten()
 
-        average_term_idf_per_document, term_idfs_df = calculate_OS_IDF(
-            preprocessed_documents)  # This array contains all the preprocessed text data from the DataFrame
+        if autocorrect:
+            preprocessed_documents = [spell_correct(doc) for doc in preprocessed_documents]
 
-        # You can further process the term IDF DataFrame to get rare terms
-        rare_terms = get_rare_terms(term_idfs_df)
+        average_idf_scores, max_idf_scores, rarest_terms = calculate_OS_IDF(preprocessed_documents)
 
-        # Create a DataFrame to display the output in a tabular format
         output_df = pd.DataFrame({
-            'Index': range(1, len(average_term_idf_per_document) + 1),
+            'Index': range(1, len(preprocessed_documents) + 1),
             'Original Text': preprocessed_documents,
-            'Rarest Terms': df.values.flatten(),
-            'Rarity Score': average_term_idf_per_document,
-            'Term Rarity Score': term_idfs_df['Term_IDFs']
+            'Rarity Score': average_idf_scores,
+            'Rarest Terms': rarest_terms,
+            'Term Rarity Score': max_idf_scores
         })
 
-        # Convert the DataFrame to HTML table
-        output_html = output_df.to_html(index=False, classes="table table-striped table-hover")
+        # Count same words as 1 word from Rarest Term column and Term Rarity Score Column
+        for i, row in output_df.iterrows():
+            terms = row['Rarest Terms'].split(', ')
+            term_scores = row['Term Rarity Score']
+            unique_terms = sorted(set(terms), key=lambda term: -term_scores[terms.index(term)])
+            output_df.at[i, 'Rarest Terms'] = ', '.join(unique_terms[:10])
+
+        output_html = output_df.to_html(index=False, classes="table table-striped table-hover", escape=False)
+
+        output_html = output_html.replace(
+            '<th>Rarity Score</th>',
+            '<th style="width: 150px;"><button class="btn btn-secondary dropdown-toggle" type="button" id="rarityDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">'
+            + '<b>Rarity Score</b> <i class="fas fa-filter" style="color: white;"></i>'
+            + '</button>'
+            + '<div class="dropdown-menu" aria-labelledby="rarityDropdown">'
+            + '<a class="dropdown-item" href="#" onclick="sortTable(\'rarity\', \'default\')">Default</a>'
+            + '<a class="dropdown-item" href="#" onclick="sortTable(\'rarity\', \'ascending\')">Ascending</a>'
+            + '<a class="dropdown-item" href="#" onclick="sortTable(\'rarity\', \'descending\')">Descending</a>'
+            + '</div></th>'
+        )
+
+        output_html = output_html.replace(
+            '<th>Rarest Terms</th>',
+            '<th id="rarestTermsHeader"><button class="btn btn-secondary dropdown-toggle" type="button" id="termsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">'
+            + '<b id="rarestTermsHeaderText">10 Rarest Terms</b> <i class="fas fa-filter" style="color: white;"></i>'
+            + '</button>'
+            + '<div class="dropdown-menu" aria-labelledby="termsDropdown">'
+            + "".join([f'<a class="dropdown-item" href="#" onclick="showTopTerms(event, {i})">{i}</a>' for i in
+                       range(1, 11)]) +
+            '</div></th>'
+        )
 
         return render_template_string("""
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>CSV Analyzer</title>
-                        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-                        <style>
-                            .container {
-                                margin-top: 50px;
-                            }
-                            table {
-                                width: 100%;
-                                border-collapse: collapse;
-                            }
-                            th, td {
-                                border: 1px solid #dddddd;
-                                text-align: left;
-                                padding: 8px;
-                            }
-                            th {
-                                background-color: #f2f2f2;
-                            }
-                            tr:nth-child(even) {
-                                background-color: #f2f2f2;
-                            }
-                            .filter-container {
-                                margin-bottom: 10px;
-                            }
-                            .table-filter {
-                                display: flex;
-                                align-items: center;
-                            }
-                            .table-filter select {
-                                margin-left: 10px;
-                            }
-                        </style>
-                        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-                        <script>
-                            $(document).ready(function(){
-                                // Function to handle filter dropdown change
-                                $('#rare_terms_filter').on('change', function() {
-                                    var selectedCount = parseInt($(this).val());
-                                    $('table tbody tr').each(function() {
-                                        var termsCell = $(this).find('td:nth-child(3)');
-                                        var scoresCell = $(this).find('td:nth-child(5)');
-                                        if (termsCell.length && scoresCell.length) {
-                                            var terms = termsCell.text().split(', ');
-                                            var scores = scoresCell.text().split(', ');
-                                            var newTerms = terms.slice(0, selectedCount).join(', ');
-                                            var newScores = scores.slice(0, selectedCount).join(', ');
-                                            termsCell.text(newTerms);
-                                            scoresCell.text(newScores);
-                                        }
-                                    });
-                                });
-                            });
-                        </script>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <h1>Analysis Result</h1>
-                            <div class="filter-container">
-                                <label for="rare_terms_filter">Show All:</label>
-                                <select id="rare_terms_filter">
-                                    <option value="0">All</option>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                    <option value="4">4</option>
-                                    <option value="5">5</option>
-                                    <option value="6">6</option>
-                                    <option value="7">7</option>
-                                    <option value="8">8</option>
-                                    <option value="9">9</option>
-                                    <option value="10">10</option>
-                                </select>
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>CSV Analyzer</title>
+                <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+                <style>
+                    .container {
+                        margin-top: 50px;
+                    }
+                    .highlight {
+                        background-color: rgba(255, 0, 0, 0.3); /* Red color with alpha transparency */
+                    }
+                    .table th {
+                        background-color: #66cc00;
+                        color: white;
+                    }
+                    .dropdown-menu {
+                        background-color: #f8f9fa; /* Light gray background */
+                    }
+                    .dropdown-item {
+                        color: #333; /* Dark gray text */
+                    }
+                    .navbar {
+                        background-color: #66cc00; /* Navbar background color */
+                    }
+                    .navbar-brand {
+                        color: white !important; /* Navbar brand text color */
+                    }
+                    .navbar-nav .nav-link {
+                        color: white !important; /* Navbar link text color */
+                    }
+                    .btn-secondary.dropdown-toggle {
+                        background-color: #66cc00 !important; /* Dropdown toggle button background color */
+                        border-color: #66cc00 !important; /* Dropdown toggle button border color */
+                    }
+                    .dropdown-menu a.dropdown-item {
+                        color: #333 !important; /* Dropdown item text color */
+                    }
+                    .dropdown-menu a.dropdown-item:hover {
+                        background-color: #f0f0f0 !important; /* Hover background color for dropdown items */
+                    }
+                    .overlay {
+                        position: fixed;
+                        display: none;
+                        width: 100%;
+                        height: 100%;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: rgba(0,0,0,0.5);
+                        z-index: 2;
+                        cursor: pointer;
+                    }
+                    .overlay-content {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        text-align: center;
+                        color: white;
+                    }
+                    .progress-overlay {
+                        position: fixed;
+                        display: none;
+                        width: 100%;
+                        height: 100%;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: rgba(0,0,0,0.7);
+                        z-index: 3;
+                    }
+                    .progress-container {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        text-align: center;
+                        color: white;
+                        font-size: 20px;
+                    }
+                </style>
+            </head>
+            <body>
+                <nav class="navbar navbar-expand-lg">
+                    <a class="navbar-brand" href="/">CSV Analyzer</a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </nav>
+                <div class="container">
+                    <h1 class="text-center mb-4">Outliers Analysis</h1>
+                    <div class="progress-overlay" id="progressOverlay">
+                        <div class="progress-container">
+                            <p id="progressMessage">Generating Outlier Analysis</p>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" id="progressBar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
-                            {{ table | safe }}
                         </div>
-                    </body>
-                    </html>
-                    """, table=output_html)
+                    </div>
+                    <form method="post" action="/upload">
+                        <div class="overlay" id="overlay2">
+                            <div class="overlay-content">
+                                <p>You have the option to select the rarest terms and sort the rarity score by clicking on their icons.</p>
+                            </div>
+                        </div>
+                        {{ table | safe }}
+                    </form>
+                </div>
+                <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+                <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+                <script>
+                    $(document).ready(function(){
+                        // Show progress overlay
+                        $("#progressOverlay").fadeIn(1000, function() {
+                            var progress = 0;
+                            var interval = setInterval(function() {
+                                var progressInt = parseInt(progress);
+                                $("#progressBar").css("width", progressInt + "%").attr("aria-valuenow", progressInt);
+                                $("#progressMessage").text("Generating Outlier Analysis - " + progressInt + "%");
+                                progress += Math.random() * 10;
+                                if (progress >= 100) {
+                                    clearInterval(interval);
+                                    $("#progressOverlay").fadeOut(1000);
+                                    // Show overlay2 after progress overlay finishes
+                                    $("#overlay2").fadeIn(1000, function() {
+                                        // Hide overlay2 after 5 seconds
+                                        setTimeout(function() {
+                                            $("#overlay2").fadeOut(1000);
+                                        }, 5000);
+                                    });
+                                }
+                            }, 300);
+                        });
+
+                        // Highlight top 10 terms by default
+                        showTopTerms(null, 10);
+                    });
+
+                    function sortTable(type, order) {
+                        var rows = $("tbody > tr");
+                        var index = type === "score" ? 4 : 3;
+                        var data = [];
+
+                        rows.each(function(){
+                            var row = $(this);
+                            var value = parseFloat(row.find("td:nth-child(" + index + ")").text());
+                            data.push({index: row.index(), value: value});
+                        });
+
+                        if (order === "ascending") {
+                            data.sort(function(a, b) {
+                                return a.value - b.value;
+                            });
+                        } else if (order === "descending") {
+                            data.sort(function(a, b) {
+                                return b.value - a.value;
+                            });
+                        }
+
+                        data.forEach(function(item) {
+                            var row = rows.eq(item.index);
+                            row.appendTo(row.parent());
+                        });
+                    }
+
+                    function showTopTerms(event, count) {
+                        if (event) event.preventDefault();
+                        var rows = $("tbody > tr");
+                        rows.each(function(){
+                            var rarest_terms = $(this).find("td:nth-child(4)").text().split(", ");
+                            var term_rarity_scores = $(this).find("td:nth-child(5)").text().split(", ");
+                            var filtered_rarest_terms = rarest_terms.slice(0, count);
+                            var filtered_term_rarity_scores = term_rarity_scores.slice(0, count);
+                            $(this).find("td:nth-child(4)").text(filtered_rarest_terms.join(", "));
+                            $(this).find("td:nth-child(5)").text(filtered_term_rarity_scores.join(", "));
+
+                            // Highlight terms in Original Text column
+                            var original_text = $(this).find("td:nth-child(2)");
+                            var original_text_words = original_text.text().split(" ");
+                            original_text.html(original_text_words.map(function(word) {
+                                return filtered_rarest_terms.includes(word) ? "<span class='highlight'>" + word + "</span>" : word;
+                            }).join(" "));
+                        });
+
+                        // Update the header text based on the selected count
+                        $("#rarestTermsHeaderText").text(count + " Rarest Terms");
+                    }
+                </script>
+            </body>
+            </html>
+        """, table=output_html)
+
     except Exception as e:
-        return render_template_string("<h2>Error occurred: {{ error }}</h2>", error=e)
+        return render_template_string(f"<h2>An error occurred: {str(e)}</h2>")
+
+
+def spell_correct(doc):
+    return doc
 
 
 @app.route('/')
 def index():
     return render_template_string("""
-                    <!DOCTYPE html>
-                    <html lang="en">
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>CSV Analyzer</title>
-                        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-                        <style>
-                            .container {
-                                margin-top: 50px;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <h1>Upload a CSV file</h1>
-                            <form action="/upload" method="post" enctype="multipart/form-data">
-                                <div class="form-group">
-                                    <input type="file" name="file" class="form-control-file">
-                                </div>
-                                <button type="submit" class="btn btn-primary">Upload</button>
-                            </form>
-                        </div>
-                    </body>
-                    </html>
-                    """)
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>CSV Analyzer</title>
+            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+            <style>
+                .container {
+                    margin-top: 50px;
+                }
+                .card-header {
+                    background-color: #66cc00;
+                    color: white;
+                }
+                .card-body {
+                    background-color: #f8f9fa; /* Light gray background */
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 class="text-center mb-4">Upload a CSV File</h1>
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Upload CSV</h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/upload" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <input type="file" name="file" class="form-control-file">
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="autocorrect" value="1" id="autocorrectCheckbox">
+                                <label class="form-check-label" for="autocorrectCheckbox">
+                                    Autocorrect
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Upload</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+            <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+        </body>
+        </html>
+    """)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
