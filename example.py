@@ -4,13 +4,18 @@ import re
 import math
 import nltk
 from nltk.corpus import stopwords
-import time
+from autocorrect import Speller
+import json
+import os
+import tarfile
+import textwrap
+from contextlib import closing
+from urllib.request import urlretrieve
 
 # Download the stopwords corpus if not already downloaded
 nltk.download('stopwords')
 
 app = Flask(__name__)
-
 
 # Function to calculate the Outlier Score (OS) and Inverse Document Frequency (IDF)
 def calculate_OS_IDF(collection):
@@ -57,7 +62,6 @@ def calculate_OS_IDF(collection):
 
     return average_term_idf_per_document, max_idf_scores, rarest_terms
 
-
 # Function to preprocess each document
 def preprocess_document(doc):
     doc = re.sub(r'\[\*\*.*?\*\*\]', ' ', doc)
@@ -73,6 +77,10 @@ def preprocess_document(doc):
 
     return doc.strip()
 
+# Function to correct spelling using autocorrect library
+def autocorrect_spelling(doc):
+    spell = Speller()  # Initialize the Speller class
+    return spell(doc)
 
 @app.route('/upload', methods=['POST'])
 def upload_csv():
@@ -95,7 +103,7 @@ def upload_csv():
         preprocessed_documents = df.values.flatten()
 
         if autocorrect:
-            preprocessed_documents = [spell_correct(doc) for doc in preprocessed_documents]
+            preprocessed_documents = [autocorrect_spelling(doc) for doc in preprocessed_documents]
 
         average_idf_scores, max_idf_scores, rarest_terms = calculate_OS_IDF(preprocessed_documents)
 
@@ -118,8 +126,9 @@ def upload_csv():
 
         output_html = output_html.replace(
             '<th>Rarity Score</th>',
-            '<th style="width: 150px;"><button class="btn btn-secondary dropdown-toggle" type="button" id="rarityDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">'
-            + '<b>Rarity Score</b> <i class="fas fa-filter" style="color: white;"></i>'
+            '<th style="width: 150px;" >'
+            + '<button class="btn btn-secondary dropdown-toggle" type="button" id="rarityDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">'
+            + '<b data-toggle="tooltip" title="Click to sort rarity scores">Rarity Score</b> <i class="fas fa-filter" style="color: white;"></i>'
             + '</button>'
             + '<div class="dropdown-menu" aria-labelledby="rarityDropdown">'
             + '<a class="dropdown-item" href="#" onclick="sortTable(\'rarity\', \'default\')">Default</a>'
@@ -130,8 +139,9 @@ def upload_csv():
 
         output_html = output_html.replace(
             '<th>Rarest Terms</th>',
-            '<th id="rarestTermsHeader"><button class="btn btn-secondary dropdown-toggle" type="button" id="termsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">'
-            + '<b id="rarestTermsHeaderText">10 Rarest Terms</b> <i class="fas fa-filter" style="color: white;"></i>'
+            '<th id="rarestTermsHeader" >'
+            + '<button class="btn btn-secondary dropdown-toggle" type="button" id="termsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">'
+            + '<b id="rarestTermsHeaderText" data-toggle="tooltip" title="Click to filter rarest terms">10 Rarest Terms</b> <i class="fas fa-filter" style="color: white;"></i>'
             + '</button>'
             + '<div class="dropdown-menu" aria-labelledby="termsDropdown">'
             + "".join([f'<a class="dropdown-item" href="#" onclick="showTopTerms(event, {i})">{i}</a>' for i in
@@ -259,6 +269,9 @@ def upload_csv():
                 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
                 <script>
                     $(document).ready(function(){
+                        // Initialize tooltips
+                        $('[data-toggle="tooltip"]').tooltip();
+
                         // Show progress overlay
                         $("#progressOverlay").fadeIn(1000, function() {
                             var progress = 0;
@@ -342,65 +355,67 @@ def upload_csv():
     except Exception as e:
         return render_template_string(f"<h2>An error occurred: {str(e)}</h2>")
 
-
-def spell_correct(doc):
-    return doc
-
-
 @app.route('/')
 def index():
     return render_template_string("""
         <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>CSV Analyzer</title>
-            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-            <style>
-                .container {
-                    margin-top: 50px;
-                }
-                .card-header {
-                    background-color: #66cc00;
-                    color: white;
-                }
-                .card-body {
-                    background-color: #f8f9fa; /* Light gray background */
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1 class="text-center mb-4">Upload a CSV File</h1>
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title">Upload CSV</h4>
-                    </div>
-                    <div class="card-body">
-                        <form method="post" action="/upload" enctype="multipart/form-data">
-                            <div class="form-group">
-                                <input type="file" name="file" class="form-control-file">
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="autocorrect" value="1" id="autocorrectCheckbox">
-                                <label class="form-check-label" for="autocorrectCheckbox">
-                                    Autocorrect
-                                </label>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Upload</button>
-                        </form>
-                    </div>
-                </div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Analyzer</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        .container {
+            margin-top: 50px;
+        }
+        .card-header {
+            background-color: #66cc00;
+            color: white;
+        }
+        .card-body {
+            background-color: #f8f9fa; /* Light gray background */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Upload a CSV File</h1>
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Upload CSV</h4>
             </div>
-            <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
-            <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-        </body>
-        </html>
-    """)
+            <div class="card-body">
+                <form method="post" action="/upload" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <input type="file" name="file" class="form-control-file">
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="autocorrect" value="1" id="autocorrectCheckbox">
+                        <label class="form-check-label" for="autocorrectCheckbox">
+                            Autocorrect
+                        </label>
+                    </div>
+                    <!-- Added tooltip to the upload button -->
+                    <button type="submit" class="btn btn-primary" data-toggle="tooltip"  data-placement="right" title="Upload only one column file!">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        // Activate Bootstrap tooltips
+        $(document).ready(function(){
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+    </script>
+</body>
+</html>
 
+    """)
 
 if __name__ == '__main__':
     app.run(debug=True)
