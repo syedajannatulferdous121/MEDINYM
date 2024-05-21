@@ -1,10 +1,11 @@
-from flask import Flask, request, render_template_string
+from flask import Flask, request, render_template_string, jsonify
 import pandas as pd
 import re
 import math
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from autocorrect import Speller
 
 # Download the stopwords corpus if not already downloaded
 nltk.download('punkt')
@@ -12,6 +13,9 @@ nltk.download('stopwords')
 
 app = Flask(__name__)
 
+# Global variables to store preprocessed documents and sorted terms
+preprocessed_documents = []
+sorted_terms = []
 
 # Function to calculate the Outlier Score (OS) and Inverse Document Frequency (IDF)
 def calculate_OS_IDF(collection):
@@ -37,7 +41,6 @@ def calculate_OS_IDF(collection):
 
     return sorted_terms
 
-
 # Function to preprocess each document
 def preprocess_document(doc):
     doc = re.sub(r'\[\*\*.*?\*\*\]', ' ', doc)
@@ -53,9 +56,15 @@ def preprocess_document(doc):
 
     return doc.strip()
 
+# Function to correct spelling using autocorrect library
+def autocorrect_spelling(doc):
+    spell = Speller(fast=True)
+    corrected_doc = ' '.join([spell(word) for word in doc.split()])
+    return corrected_doc
 
 @app.route('/upload', methods=['POST'])
 def upload_csv():
+    global preprocessed_documents, sorted_terms
     try:
         file = request.files['file']
         if not file:
@@ -69,36 +78,19 @@ def upload_csv():
         if len(df.columns) != 1:
             return render_template_string("<h2>Please provide only a one-column dataset</h2>")
 
+        enable_automatic_correction = request.form.get('enable_automatic_correction') == '1'
+
         df = df.applymap(preprocess_document)
         preprocessed_documents = df.values.flatten()
 
-        # Get the selected number of terms from the slider
-        num_terms = int(request.form['num_terms'])
+        if enable_automatic_correction:
+            preprocessed_documents = [autocorrect_spelling(doc) for doc in preprocessed_documents]
 
         # Calculate IDF scores for all terms
         sorted_terms = calculate_OS_IDF(preprocessed_documents)
 
         # Prepare the output table data
-        output_data = {
-            'Original document index': [],
-            'Original Text': [],
-            'Term': [],
-            'Term Rarity score': []
-        }
-
-        for i in range(min(num_terms, len(sorted_terms))):
-            term, rarity_score = sorted_terms[i]
-            term_indices = [index for index, doc in enumerate(preprocessed_documents) if term in doc]
-            if term_indices:
-                term_index = term_indices[0]
-                output_data['Original document index'].append(term_index + 1)
-                output_data['Original Text'].append(df.iat[term_index, 0])
-                output_data['Term'].append(term)
-                output_data['Term Rarity score'].append(rarity_score)
-
-        output_df = pd.DataFrame(output_data)
-
-        output_html = output_df.to_html(index=False, classes="table table-striped table-hover", escape=False)
+        output_html = generate_table_html(50)  # Default to 50 terms
 
         return render_template_string("""
             <!DOCTYPE html>
@@ -108,18 +100,43 @@ def upload_csv():
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Find Outlier Word</title>
                 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+                <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+                <style>
+                    .highlight { background-color: rgba(255, 0, 0, 0.3); /* Red color with alpha transparency */
+                     }
+                </style>
+                <script>
+                    $(document).ready(function() {
+                        $("#num_terms").on("input", function() {
+                            var num_terms = $(this).val();
+                            $("#num_terms_label").text(num_terms);
+                            updateTable(num_terms);
+                        });
+                    });
+
+                    function updateTable(num_terms) {
+                        $.ajax({
+                            url: "/update_table",
+                            method: "POST",
+                            data: { num_terms: num_terms },
+                            success: function(data) {
+                                $("#output_table").html(data);
+                            }
+                        });
+                    }
+                </script>
             </head>
             <body>
                 <div class="container">
                     <h1 class="text-center mb-4">Find Outlier Word</h1>
-                    <div class="row justify-content-center">
-                        <div class="col-md-10">
-                            {{ table | safe }}
-                        </div>
+                    <div class="form-group">
+                        <label for="num_terms">Number of Terms: <span id="num_terms_label">50</span></label>
+                        <input type="range" class="form-control-range" id="num_terms" name="num_terms" min="1" max="500" value="50">
+                    </div>
+                    <div id="output_table">
+                        {{ table | safe }}
                     </div>
                 </div>
-                <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-                <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
             </body>
             </html>
         """, table=output_html)
@@ -127,6 +144,33 @@ def upload_csv():
     except Exception as e:
         return render_template_string(f"<h2>An error occurred: {str(e)}</h2>")
 
+@app.route('/update_table', methods=['POST'])
+def update_table():
+    num_terms = int(request.form['num_terms'])
+    output_html = generate_table_html(num_terms)
+    return output_html
+
+def generate_table_html(num_terms):
+    output_data = {
+        'Original document index': [],
+        'Original Text': [],
+        'Term': [],
+        'Term Rarity score': []
+    }
+    for i in range(min(num_terms, len(sorted_terms))):
+        term, rarity_score = sorted_terms[i]
+        term_indices = [index for index, doc in enumerate(preprocessed_documents) if re.search(r'\b{}\b'.format(re.escape(term)), doc)]
+        if term_indices:
+            term_index = term_indices[0]
+            highlighted_text = re.sub(r'(\b{}\b)'.format(re.escape(term)), r'<span class="highlight">\1</span>', preprocessed_documents[term_index])
+            output_data['Original document index'].append(term_index + 1)
+            output_data['Original Text'].append(highlighted_text)
+            output_data['Term'].append(term)
+            output_data['Term Rarity score'].append(rarity_score)
+
+    output_df = pd.DataFrame(output_data)
+    output_html = output_df.to_html(index=False, classes="table table-striped table-hover", escape=False)
+    return output_html
 
 @app.route('/')
 def index():
@@ -138,6 +182,7 @@ def index():
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Find Outlier Word</title>
             <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+            <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
         </head>
         <body>
             <div class="container">
@@ -149,10 +194,11 @@ def index():
                                 <label for="file">Choose a CSV file:</label>
                                 <input type="file" class="form-control-file" id="file" name="file" accept=".csv" required>
                             </div>
-                            <div class="form-group">
-                                <label for="num_terms">Select number of terms:</label>
-                                <input type="range" class="form-control-range" id="num_terms" name="num_terms" min="1" max="500" value="1">
-                                <output for="num_terms">1</output>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="enable_automatic_correction" value="1" id="enableCorrectionCheckbox">
+                                <label class="form-check-label" for="enableCorrectionCheckbox">
+                                Enable Automatic Spelling Correction
+                                </label>
                             </div>
                             <div class="form-group">
                                 <button type="submit" class="btn btn-primary btn-block">Upload</button>
@@ -161,23 +207,9 @@ def index():
                     </div>
                 </div>
             </div>
-            <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-            <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-            <script>
-                var slider = document.getElementById("num_terms");
-                var output = document.querySelector("output[for=num_terms]");
-                output.innerHTML = slider.value;
-
-                slider.oninput = function() {
-                  output.innerHTML = this.value;
-                }
-            </script>
         </body>
         </html>
     """)
-
-
-
 
 if __name__ == '__main__':
     app.run(port=8081, debug=True)
