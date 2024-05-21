@@ -79,8 +79,10 @@ def preprocess_document(doc):
 
 # Function to correct spelling using autocorrect library
 def autocorrect_spelling(doc):
-    spell = Speller()  # Initialize the Speller class
+
+    spell = Speller(fast=True)
     return spell(doc)
+
 
 @app.route('/upload', methods=['POST'])
 def upload_csv():
@@ -97,12 +99,13 @@ def upload_csv():
         if len(df.columns) != 1:
             return render_template_string("<h2>Please provide only a one-column dataset</h2>")
 
-        autocorrect = request.form.get('autocorrect') == '1'
+        enable_automatic_correction = request.form.get('enable_automatic_correction') == '1'
 
-        df = df.applymap(preprocess_document)
+        df = df.apply(lambda x: x.map(preprocess_document))
+
         preprocessed_documents = df.values.flatten()
 
-        if autocorrect:
+        if enable_automatic_correction:
             preprocessed_documents = [autocorrect_spelling(doc) for doc in preprocessed_documents]
 
         average_idf_scores, max_idf_scores, rarest_terms = calculate_OS_IDF(preprocessed_documents)
@@ -392,10 +395,11 @@ def index():
                         <input type="file" name="file" class="form-control-file">
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="autocorrect" value="1" id="autocorrectCheckbox">
-                        <label class="form-check-label" for="autocorrectCheckbox">
-                            Autocorrect
+                        <input class="form-check-input" type="checkbox" name="enable_automatic_correction" value="1" id="enableCorrectionCheckbox">
+                        <label class="form-check-label" for="enableCorrectionCheckbox">
+                        Enable Automatic Spelling Correction
                         </label>
+
                     </div>
                     <!-- Added tooltip to the upload button -->
                     <button type="submit" class="btn btn-primary" data-toggle="tooltip"  data-placement="right" title="Upload only one column file!">Upload</button>
