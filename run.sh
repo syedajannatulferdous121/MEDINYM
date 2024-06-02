@@ -9,6 +9,6 @@ python outlier_word.py
 echo "## outlier_word.py is running.. ##"
 
 # Run the second Python script
-python example.py
+python outlier_doc.py
 
-echo "## example.py is running.. ##"
+echo "## outlier_doc.py is running.. ##"
