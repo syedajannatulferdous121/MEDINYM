@@ -7,6 +7,20 @@ from nltk.corpus import stopwords
 from autocorrect import Speller
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import io
+import base64
+from matplotlib.figure import Figure
+import numpy as np
+import mpld3
+from mpld3 import plugins
+from IPython.display import HTML
+import spacy
+
+
+
+nlp = spacy.load('en_core_web_sm')
+
+
 
 # Download the stopwords corpus if not already downloaded
 nltk.download('stopwords')
@@ -14,28 +28,22 @@ nltk.download('stopwords')
 app = Flask(__name__)
 
 
-# Function to calculate the Outlier Score (OS) and Inverse Document Frequency (IDF)
 def calculate_OS_IDF(collection):
-    # Initialize dictionaries to store document frequencies (DF) and inverse document frequencies (IDF)
     document_frequencies = {}
     inverse_document_frequencies = {}
-    # The documents tokenize into terms.
     tokenized_documents = [doc.split() for doc in collection]
 
-    # Calculate the document frequency (DF) for each term
     for doc in tokenized_documents:
         unique_terms = set(doc)
         for term in unique_terms:
             document_frequencies[term] = document_frequencies.get(term, 0) + 1
 
-    # Total number of documents (each row counts as one document)
     total_documents = len(collection)
 
-    # Calculate IDF score for each term
     for term, df in document_frequencies.items():
-        inverse_document_frequencies[term] = round(math.log(total_documents / (1 + df)), 2)
+        idf_score = math.log(total_documents / (1 + df))
+        inverse_document_frequencies[term] = idf_score
 
-    # Calculate average IDF per document (each row counts as one document)
     average_term_idf_per_document = []
     max_idf_scores = []
     rarest_terms = []
@@ -43,10 +51,10 @@ def calculate_OS_IDF(collection):
     for doc in tokenized_documents:
         doc_idf_values = [inverse_document_frequencies.get(term, 0) for term in doc]
         if doc_idf_values:
-            avg_idf = round(sum(doc_idf_values) / len(doc), 2)
+            avg_idf = round(np.nan_to_num(np.mean(doc_idf_values), nan=0.0), 2)
             sorted_terms = sorted(set(doc), key=lambda term: -inverse_document_frequencies.get(term, 0))
             rarest_term = ', '.join(sorted_terms[:10])
-            max_idf = [f"{inverse_document_frequencies.get(term, 0):.2f}" for term in sorted_terms[:10]]
+            max_idf = [f"{np.nan_to_num(inverse_document_frequencies.get(term, 0), nan=0.0):.2f}" for term in sorted_terms[:10]]
         else:
             avg_idf = 0
             max_idf = [f"{0:.2f}" for _ in range(10)]
@@ -57,7 +65,6 @@ def calculate_OS_IDF(collection):
         rarest_terms.append(rarest_term)
 
     return average_term_idf_per_document, max_idf_scores, rarest_terms
-
 
 # Function to preprocess each document
 def preprocess_document(doc):
@@ -74,6 +81,10 @@ def preprocess_document(doc):
 
     return doc.strip()
 
+    spacy_doc = nlp(doc)
+    tokens = [token.text.lower() for token in spacy_doc if token.pos_ in ['NOUN', 'PROPN', 'NUM', 'SYM']]
+
+    return ' '.join(tokens).strip()
 
 # Function to correct spelling using autocorrect library
 def autocorrect_spelling(doc):
@@ -184,14 +195,17 @@ def upload_csv():
                        </script>
                    """)
 
+        # Read the CSV file
         df = pd.read_csv(file)
 
+        # Check for single column
         if len(df.columns) != 1:
             return render_template_string("<h2>Please provide only a one-column dataset</h2>")
 
-        enable_automatic_correction = request.form.get('enable_automatic_correction') == '1'
+        # Store original text before preprocessing
+        original_documents = df.iloc[:, 0].tolist()
 
-        df = df.apply(lambda x: x.map(preprocess_document))
+        enable_automatic_correction = request.form.get('enable_automatic_correction') == '1'
 
         # Apply preprocessing and optional autocorrection
         preprocessed_documents = df.iloc[:, 0].apply(preprocess_document).tolist()
@@ -200,14 +214,6 @@ def upload_csv():
             preprocessed_documents = [autocorrect_spelling(doc) for doc in preprocessed_documents]
 
         average_idf_scores, max_idf_scores, rarest_terms = calculate_OS_IDF(preprocessed_documents)
-
-        output_df = pd.DataFrame({
-            'Index': range(1, len(preprocessed_documents) + 1),
-            'Original Text': preprocessed_documents,
-            'Rarity Score': average_idf_scores,
-            'Rarest Terms': rarest_terms,
-            'Term Rarity Score': max_idf_scores
-        })
 
         def generate_color_gradient(scores, max_alpha=0.8, alpha_gap=0.05):
             max_score = max(scores)
@@ -224,20 +230,101 @@ def upload_csv():
 
             return colors
 
-        def highlightTerms(text, terms, scores):
-            term_scores_map = {term: score for term, score in zip(terms, scores)}
-            sorted_terms = sorted(terms, key=lambda term: -term_scores_map[term])
-            scores_sorted = [term_scores_map[term] for term in sorted_terms]
-            colors = generate_color_gradient(scores_sorted)
 
-            term_color_map = {term: colors[i] for i, term in enumerate(sorted_terms)}
 
-            return ' '.join(
-                [
-                    f"<span style='background-color: {term_color_map[word]};'>{word}</span>" if word in term_color_map else word
-                    for word in text.split()
-                ]
-            )
+        # Add this function to perform case-insensitive replacement with whole word matching
+        def replace_case_insensitive(text, term, replacement):
+            pattern = re.compile(r'\b' + re.escape(term) + r'\b', re.IGNORECASE)
+            return pattern.sub(replacement, text)
+
+        highlighted_texts = []
+        for text, rare_terms, term_scores in zip(original_documents, rarest_terms, max_idf_scores):
+            rare_terms_list = rare_terms.split(', ')
+            term_scores = list(map(float, term_scores))  # Convert term scores to float
+
+            # Apply red color gradient
+            colors = generate_color_gradient(term_scores)
+            highlighted_text = text
+            for term, color in zip(rare_terms_list, colors):
+                highlighted_text = replace_case_insensitive(highlighted_text, term,
+                                                            f'<span style="background-color: {color}">{term}</span>')
+            highlighted_texts.append(highlighted_text)
+
+            def highlightTermsWithColorGradient(text, terms, scores, selected_terms):
+                term_scores_map = {term: score for term, score in zip(terms, scores)}
+                selected_term_scores_map = {term: term_scores_map[term] for term in selected_terms}
+                sorted_terms = sorted(selected_terms, key=lambda term: -selected_term_scores_map[term])
+                scores_sorted = [selected_term_scores_map[term] for term in sorted_terms]
+                colors = generate_color_gradient(scores_sorted)
+
+                term_color_map = {term: colors[i] for i, term in enumerate(sorted_terms)}
+
+                return ' '.join(
+                    [
+                        f"<span style='background-color: {term_color_map.get(word, '')};'>{word}</span>" if word in term_color_map else word
+                        for word in text.split()
+                    ]
+                )
+
+
+
+
+
+        output_df = pd.DataFrame({
+            'Index': range(1, len(preprocessed_documents) + 1),
+            'Original Text': highlighted_texts,  # Use highlighted texts here
+            'Rarity Score': average_idf_scores,
+            'Rarest Terms': rarest_terms,
+            'Term Rarity Score': max_idf_scores
+        })
+
+        output_df['Original Text'] = highlighted_texts
+        output_df['Term Rarity Score'] = output_df['Term Rarity Score'].apply(
+            lambda scores: ', '.join([score if score != 'nan' else '0.00' for score in scores]))
+
+        # Convert the dataframe to HTML with the required data attributes
+        output_html = output_df.to_html(index=False, classes="table table-striped table-hover table-responsive",
+                                        escape=False)
+
+
+        # Calculate the statistics for the histogram
+        rarity_scores = list(map(float, average_idf_scores))
+        mean_score = np.mean(rarity_scores)
+        median_score = np.median(rarity_scores)
+        std_dev_score = np.std(rarity_scores)
+
+        # Generate the histogram
+        fig = Figure()
+        ax = fig.subplots()
+        counts, bins, patches = ax.hist(rarity_scores, bins='auto', color='green', alpha=0.7, edgecolor='black')
+
+        # Plot mean, median, and standard deviation lines
+        ax.axvline(mean_score, color='blue', linestyle='-', linewidth=2, label=f'Mean: {mean_score:.2f}')
+        ax.axhline(y=max(counts) / 2, color='blue', linestyle='-',
+                   linewidth=2)  # Horizontal line at half of the max frequency
+        ax.axvline(median_score, color='orange', linestyle='--', linewidth=2, label=f'Median: {median_score:.2f}')
+        ax.axvline(mean_score + std_dev_score, color='yellow', linestyle='--', linewidth=2,
+                   label=f'Standard Deviation: {std_dev_score:.2f}')
+        ax.axvline(mean_score - std_dev_score, color='yellow', linestyle='--', linewidth=2)
+
+        # Set axis limits to ensure the mean lines are visible
+        ax.set_xlim([min(rarity_scores) - 1, max(rarity_scores) + 1])
+        ax.set_ylim([0, max(counts) + 5])
+
+        ax.set_title('Rarity Score Frequencies')
+        ax.set_xlabel('Outlier Score')
+        ax.set_ylabel('Frequency')
+        ax.legend()
+
+        # Convert the plot to a PNG image and then to a base64 string
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png')
+        buf.seek(0)
+        histogram_png = base64.b64encode(buf.getvalue()).decode('utf-8')
+        buf.close()
+
+        # Add histogram image to the HTML
+        histogram_html = f'<div style="text-align: center;"><img src="data:image/png;base64,{histogram_png}" alt="Rarity Score Frequencies Histogram"></div>'
 
         # for i, row in output_df.iterrows():
         # terms = row['Rarest Terms'].split(', ')
@@ -272,13 +359,21 @@ def upload_csv():
             + '</button>'
             + '<div class="dropdown-menu" aria-labelledby="termsDropdown">'
             + "".join(
-                [f'<a class="dropdown-item" href="#" onclick="showTopTerms(event, {i}, \'default\')">{i}</a>' for i in
+                [f'<a class="dropdown-item" href="#" onclick="showTopTerms(event, {i})">{i}</a>' for i in
                  range(1, 11)]) +
             '</div></div></th>'
         )
 
-        output_html = output_html.replace('<table', '<div class="table-responsive"><div class="container"><table')
-        output_html = output_html.replace('</table>', '</table></div></div>')
+
+
+
+        output_html = output_html.replace('<table', '<div class="table-responsive"><table')
+        output_html = output_html.replace('</table>', '</table></div>')
+
+
+
+
+        table = output_html
 
         return render_template_string("""
             <!DOCTYPE html>
@@ -394,8 +489,9 @@ def upload_csv():
                                 <p>You have the option to select the rarest terms and sort the rarity score by clicking on their icons.</p>
                             </div>
                         </div>
-                        <div class="table-responsive">
-                        {{ table | safe }}
+
+                    {{ histogram_html|safe }}
+                    {{ table_html|safe }}
                         </div>
                     </form>
 
@@ -431,7 +527,48 @@ def upload_csv():
 
 
 
-                    function showTopTerms(event, count, order) {
+  
+
+
+// Function to highlight terms with color gradient based on scores
+function highlightTermsWithColorGradient(text, terms, scores) {
+    const term_scores_map = {};
+    terms.forEach((term, index) => {
+        term_scores_map[term.toLowerCase()] = scores[index];
+    });
+
+    const sorted_terms = terms.slice().sort((a, b) => term_scores_map[b.toLowerCase()] - term_scores_map[a.toLowerCase()]);
+    const sorted_scores = sorted_terms.map(term => term_scores_map[term.toLowerCase()]);
+    const colors = generateColorGradient(sorted_scores);
+
+    const term_color_map = {};
+    sorted_terms.forEach((term, index) => {
+        term_color_map[term.toLowerCase()] = colors[index];
+    });
+    
+    
+    
+    
+
+    const regex = new RegExp(`\\b(${terms.join('|')})\\b`, 'gi');
+    return text.replace(regex, match => `<span style="background-color: ${term_color_map[match.toLowerCase()]};">${match}</span>`);
+}
+
+// Function to generate color gradient
+function generateColorGradient(scores, max_alpha = 0.8, alpha_gap = 0.05) {
+    const max_score = Math.max(...scores);
+    const sorted_scores = [...scores].sort((a, b) => b - a);
+
+    return scores.map(score => {
+        const rank = sorted_scores.indexOf(score);
+        let alpha = max_alpha - rank * alpha_gap;
+        if (alpha < 0) alpha = 0;
+        return `rgba(255, 0, 0, ${alpha})`;
+    });
+}
+
+// Function to show top terms and update highlights
+function showTopTerms(event, count, order) {
     const header = $('#rarestTermsHeaderText');
     header.text(count + ' Rarest Terms');
     const table = $('table').get(0);
@@ -450,11 +587,11 @@ def upload_csv():
         const topScores = sortedIndices.slice(0, count).map(index => parseFloat(termScores[index]).toFixed(2));
 
         termsCell.innerText = topTerms.join(', ');
-        termScoresCell.innerText = topScores.join(', '); // Changed this line
+        termScoresCell.innerText = topScores.join(', ');
 
         const originalTextCell = row.cells[1];
         const originalText = originalTextCell.getAttribute('data-original-text');
-        const updatedText = highlightTerms(originalText, topTerms, topScores);
+        const updatedText = highlightTermsWithColorGradient(originalText, topTerms, topScores);
         originalTextCell.innerHTML = updatedText;
     });
 
@@ -462,109 +599,72 @@ def upload_csv():
 }
 
 
-function highlightTerms(text, terms, scores) {
-    const termScoresMap = {};
-    terms.forEach((term, index) => {
-        termScoresMap[term] = scores[index];
-    });
-    const sortedTerms = terms.slice().sort((a, b) => termScoresMap[b] - termScoresMap[a]);
-    const sortedScores = sortedTerms.map(term => termScoresMap[term]);
-    const colors = generateColorGradient(sortedScores);
 
-    const termColorMap = {};
-    sortedTerms.forEach((term, index) => {
-        termColorMap[term] = colors[index];
-    });
+function sortTable(column, order) {
+    const table = $('table').get(0);
+    const rows = Array.from(table.rows).slice(1); // Skip the header row
+    const tbody = table.tBodies[0];
 
-    return text.split(' ').map(word => {
-        return termColorMap[word] ? `<span style="background-color: ${termColorMap[word]};">${word}</span>` : word;
-    }).join(' ');
+    if (column === 'rarity') {
+        rows.sort((rowA, rowB) => {
+            const cellA = parseFloat(rowA.cells[2].innerText);
+            const cellB = parseFloat(rowB.cells[2].innerText);
+            return order === 'ascending' ? cellA - cellB : cellB - cellA;
+        });
+
+        // Clear the table body
+        while (tbody.firstChild) {
+            tbody.removeChild(tbody.firstChild);
+        }
+
+        // Append sorted rows
+        rows.forEach(row => tbody.appendChild(row));
+        
+    } else if (order === 'default') {
+        // Reset to default order
+        rows.sort((rowA, rowB) => {
+            const cellA = parseFloat($(rowA).find('td:eq(2)').attr('data-original-rarity'));
+            const cellB = parseFloat($(rowB).find('td:eq(2)').attr('data-original-rarity'));
+            return cellA - cellB;
+        });
+
+        // Clear the table body
+        while (tbody.firstChild) {
+            tbody.removeChild(tbody.firstChild);
+        }
+
+        // Append rows in the default order
+        rows.forEach(row => tbody.appendChild(row));
+    }
 }
 
-function generateColorGradient(scores, maxAlpha = 0.8, alphaGap = 0.05) {
-    const maxScore = Math.max(...scores);
-    const sortedScores = [...scores].sort((a, b) => b - a);
+// Event handler for dropdown selection
+$(document).ready(function () {
+    $('[data-toggle="tooltip"]').tooltip();
 
-    return scores.map(score => {
-        const rank = sortedScores.indexOf(score);
-        let alpha = maxAlpha - rank * alphaGap;
-        if (alpha < 0) alpha = 0;
-        return `rgba(255, 0, 0, ${alpha})`;
-    });
-}
-
-// Ensure original terms and scores are stored in data attributes when the table is generated
-$(document).ready(function() {
-    $('table tbody tr').each(function() {
+    $('table tbody tr').each(function () {
         const originalTextCell = $(this).find('td:eq(1)');
         const termsCell = $(this).find('td:eq(3)');
         const termScoresCell = $(this).find('td:eq(4)');
 
-
-
         termsCell.attr('data-original-terms', termsCell.text());
-        const termScores = JSON.parse(termScoresCell.text()).map(score => parseFloat(score).toFixed(2));
+        const termScores = termScoresCell.text().split(', ').map(parseFloat);
         termScoresCell.attr('data-original-scores', JSON.stringify(termScores));
-        originalTextCell.attr('data-original-text', originalTextCell.text());
-
-        const terms = termsCell.text().split(', ');
-
-        const originalText = originalTextCell.text();
-        const highlightedText = highlightTerms(originalText, terms, termScores);
-        originalTextCell.html(highlightedText);
+        originalTextCell.attr('data-original-text', originalTextCell.html());
     });
 });
 
-$(document).ready(function () {
-        $('[data-toggle="tooltip"]').tooltip();
 
-        // Ensure original rarity scores are stored in data attributes when the table is generated
-        $('table tbody tr').each(function () {
-            const rarityScoreCell = $(this).find('td:eq(2)');
-            rarityScoreCell.attr('data-original-rarity', rarityScoreCell.text());
-        });
-    });
 
-    function sortTable(column, order) {
-        const table = $('table').get(0);
-        const rows = Array.from(table.rows).slice(1); // Skip the header row
-        const tbody = table.tBodies[0];
 
-        if (column === 'rarity') {
-            rows.sort((rowA, rowB) => {
-                const cellA = parseFloat(rowA.cells[2].innerText);
-                const cellB = parseFloat(rowB.cells[2].innerText);
-                return order === 'ascending' ? cellA - cellB : cellB - cellA;
-            });
 
-            // Clear the table body
-            while (tbody.firstChild) {
-                tbody.removeChild(tbody.firstChild);
-            }
 
-            // Append sorted rows
-            rows.forEach(row => tbody.appendChild(row));
-        } else if (order === 'default') {
-            // Reset to default order
-            rows.sort((rowA, rowB) => {
-                const cellA = parseFloat($(rowA).find('td:eq(2)').attr('data-original-rarity'));
-                const cellB = parseFloat($(rowB).find('td:eq(2)').attr('data-original-rarity'));
-                return cellA - cellB;
-            });
 
-            // Clear the table body
-            while (tbody.firstChild) {
-                tbody.removeChild(tbody.firstChild);
-            }
-
-            // Append rows in the default order
-            rows.forEach(row => tbody.appendChild(row));
-        }
-    }
+    
                 </script>
             </body>
             </html>
-        """, table=output_html)
+        """, table_html=output_html, histogram_html=histogram_html)
 
     except Exception as e:
         return f"An error occurred: {str(e)}"
@@ -572,3 +672,4 @@ $(document).ready(function () {
 
 if __name__ == '__main__':
     app.run(port=8087, debug=True)
+
