@@ -13,7 +13,8 @@ from matplotlib.figure import Figure
 import numpy as np
 import mpld3
 from mpld3 import plugins
-import json
+import pandas as pd
+from nltk.corpus import wordnet as wn
 
 # Download the stopwords corpus if not already downloaded
 nltk.download('stopwords')
@@ -21,28 +22,37 @@ nltk.download('stopwords')
 app = Flask(__name__)
 
 
+# Function to determine if a word is a noun using WordNet
+def is_noun(word):
+    synsets = wn.synsets(word)
+    for synset in synsets:
+        if synset.pos() == 'n':  # 'n' for noun
+            return True
+    return False
+
 # Function to calculate the Outlier Score (OS) and Inverse Document Frequency (IDF)
 def calculate_OS_IDF(collection):
     # Initialize dictionaries to store document frequencies (DF) and inverse document frequencies (IDF)
     document_frequencies = {}
     inverse_document_frequencies = {}
-    # The documents tokenize into terms.
+
+    # Tokenize documents
     tokenized_documents = [doc.split() for doc in collection]
 
-    # Calculate the document frequency (DF) for each term
+    # Calculate document frequency (DF) for each term
     for doc in tokenized_documents:
         unique_terms = set(doc)
         for term in unique_terms:
             document_frequencies[term] = document_frequencies.get(term, 0) + 1
 
-    # Total number of documents (each row counts as one document)
+    # Total number of documents
     total_documents = len(collection)
 
     # Calculate IDF score for each term
     for term, df in document_frequencies.items():
         inverse_document_frequencies[term] = round(math.log(total_documents / (1 + df)), 2)
 
-    # Calculate average IDF per document (each row counts as one document)
+    # Calculate average IDF per document and identify rarest terms
     average_term_idf_per_document = []
     max_idf_scores = []
     rarest_terms = []
@@ -51,12 +61,17 @@ def calculate_OS_IDF(collection):
         doc_idf_values = [inverse_document_frequencies.get(term, 0) for term in doc]
         if doc_idf_values:
             avg_idf = round(sum(doc_idf_values) / len(doc), 2)
+            # Sort terms by IDF score
             sorted_terms = sorted(set(doc), key=lambda term: -inverse_document_frequencies.get(term, 0))
-            rarest_term = ', '.join(sorted_terms[:10])
-            max_idf = [f"{inverse_document_frequencies.get(term, 0):.2f}" for term in sorted_terms[:10]]
+            # Filter out adjectives, verbs, and adverbs
+            filtered_sorted_terms = [term for term in sorted_terms if is_noun(term)]
+            # Take top 10 terms
+            rarest_term = ', '.join(filtered_sorted_terms[:10])
+            # Corresponding IDF scores
+            max_idf = [inverse_document_frequencies.get(term, 0) for term in filtered_sorted_terms[:10]]
         else:
             avg_idf = 0
-            max_idf = [f"{0:.2f}" for _ in range(10)]
+            max_idf = [0] * 10
             rarest_term = ""
 
         average_term_idf_per_document.append(f"{avg_idf:.2f}")
@@ -194,10 +209,6 @@ def upload_csv():
         # Read the CSV file
         df = pd.read_csv(file)
 
-
-
-
-
         # Check for single column
         if len(df.columns) != 1:
             return render_template_string("<h2>Please provide only a one-column dataset</h2>")
@@ -207,6 +218,7 @@ def upload_csv():
 
         enable_automatic_correction = request.form.get('enable_automatic_correction') == '1'
 
+
         # Apply preprocessing and optional autocorrection
         preprocessed_documents = df.iloc[:, 0].apply(preprocess_document).tolist()
 
@@ -215,22 +227,14 @@ def upload_csv():
 
         average_idf_scores, max_idf_scores, rarest_terms = calculate_OS_IDF(preprocessed_documents)
 
-
-
-
-
-        # Assuming 'Original Text' is available in the original DataFrame 'df'
         output_df = pd.DataFrame({
             'Index': range(1, len(preprocessed_documents) + 1),
-            'Original Text': original_documents,
             'Preprocessed Text': preprocessed_documents,
             'Rarity Score': average_idf_scores,
             'Rarest Terms': rarest_terms,
-            'Term Rarity Score': max_idf_scores
-             # Add original texts to the output
+            'Term Rarity Score': max_idf_scores,
+            'Original Text': original_documents
         })
-
-
 
         # Calculate the statistics for the histogram
         rarity_scores = list(map(float, average_idf_scores))
@@ -301,31 +305,12 @@ def upload_csv():
                 ]
             )
 
-        # Generate the table rows with correct variables
-        table_rows = ""
-        for i, (original_text, preprocessed_text, rarity_score, rarest_terms, rarest_terms_scores) in enumerate(
-                zip(original_documents, preprocessed_documents, rarity_scores, rarest_terms, max_idf_scores)):
-            table_rows += f"""
-            <tr>
-                <td>{i + 1}</td>
-                <td>{original_text}</td> <!-- New Original Text column -->
-                <td>{preprocessed_text}</td>
-                <td>{rarity_score}</td>
-                <td>{", ".join(rarest_terms)}</td>
-                <td>{json.dumps(rarest_terms_scores)}</td>
-            </tr>
-            """
-
-
-
         # for i, row in output_df.iterrows():
         # terms = row['Rarest Terms'].split(', ')
         # term_scores = row['Term Rarity Score']
         # original_text = row['Original Text']
         # highlighted_text = apply_highlighting(original_text, terms, term_scores)
         # output_df.at[i, 'Original Text'] = highlighted_text
-
-
 
         output_html = output_df.to_html(index=False, classes="table table-striped table-hover table-responsive",
                                         escape=False)
@@ -334,7 +319,7 @@ def upload_csv():
             '<th>Rarity Score</th>',
             '<th>'
             + '<div class="dropdown">'
-            + '<button class="btn btn-secondary dropdown-toggle" type="button" id="rarityDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="width: 90px;">'
+            + '<button class="btn btn-secondary dropdown-toggle" type="button" id="rarityDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">'
             + '<b data-toggle="tooltip" title="Click to sort rarity scores">Rarity <br> Score</b> <i class="fas fa-filter" style="color: white;"></i>'
             + '</button>'
             + '<div class="dropdown-menu" aria-labelledby="rarityDropdown">'
@@ -358,28 +343,11 @@ def upload_csv():
             '</div></div></th>'
         )
 
+
+
         output_html = output_html.replace('<th>Original Text</th>', '<th>Original Text</th>')
         output_html = output_html.replace('<table', '<div class="table-responsive"><div class="container"><table')
         output_html = output_html.replace('</table>', '</table></div></div>')
-
-
-        table_html = f"""
-        <table class="table table-striped table-hover table-responsive">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Original Text</th> <!-- New Original Text column -->
-                    <th>Preprocessed Text</th>
-                    <th>Rarity Score</th>
-                    <th>Rarest Terms</th>
-                    <th>Rarest Terms Scores</th>
-                </tr>
-            </thead>
-            <tbody>
-                {table_rows}
-            </tbody>
-        </table>
-        """
 
         return render_template_string("""
             <!DOCTYPE html>
@@ -401,7 +369,7 @@ def upload_csv():
                         background-color: #66cc00;
                         color: white;
                     }
-                    
+
                     .dropdown-menu {
                         background-color: #f8f9fa; /* Light gray background */
                     }
@@ -482,9 +450,6 @@ def upload_csv():
 
                 <div class="container">
                     <h1 class="text-center mb-4">Outliers Analysis</h1>
-                    
-                    
-                    
                     <div class="progress-overlay" id="progressOverlay">
                         <div class="progress-container">
                             <p id="progressMessage">Generating Outlier Analysis</p>
@@ -534,7 +499,6 @@ def upload_csv():
                             }
                         }, 300);
                     });
-
 
 
 
@@ -626,22 +590,9 @@ $(document).ready(function () {
         $('[data-toggle="tooltip"]').tooltip();
 
         // Ensure original rarity scores are stored in data attributes when the table is generated
-         $('table tbody tr').each(function () {
-            const originalTextCell = $(this).find('td:eq(1)');
-            const preprocessedTextCell = $(this).find('td:eq(2)');
-            const termsCell = $(this).find('td:eq(4)');
-            const termScoresCell = $(this).find('td:eq(5)');
-
-            termsCell.attr('data-original-terms', termsCell.text());
-            const termScores = JSON.parse(termScoresCell.text()).map(score => parseFloat(score).toFixed(2));
-            termScoresCell.attr('data-original-scores', JSON.stringify(termScores));
-            preprocessedTextCell.attr('data-original-text', preprocessedTextCell.text());
-
-            const terms = termsCell.text().split(', ');
-
-            const preprocessedText = preprocessedTextCell.text();
-            const highlightedText = highlightTerms(preprocessedText, terms, termScores);
-            preprocessedTextCell.html(highlightedText);
+        $('table tbody tr').each(function () {
+            const rarityScoreCell = $(this).find('td:eq(2)');
+            rarityScoreCell.attr('data-original-rarity', rarityScoreCell.text());
         });
     });
 
