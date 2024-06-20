@@ -13,8 +13,10 @@ from matplotlib.figure import Figure
 import numpy as np
 import mpld3
 from mpld3 import plugins
-import pandas as pd
-from nltk.corpus import wordnet as wn
+import spacy
+
+# Load the spaCy language model
+nlp = spacy.load('en_core_web_sm')
 
 # Download the stopwords corpus if not already downloaded
 nltk.download('stopwords')
@@ -22,13 +24,10 @@ nltk.download('stopwords')
 app = Flask(__name__)
 
 
-# Function to determine if a word is a noun using WordNet
-def is_noun(word):
-    synsets = wn.synsets(word)
-    for synset in synsets:
-        if synset.pos() == 'n':  # 'n' for noun
-            return True
-    return False
+# Function to check if a token is a noun or a proper noun
+def is_noun_or_proper_noun(token):
+    return token.pos_ in {'NOUN', 'PROPN'}
+
 
 # Function to calculate the Outlier Score (OS) and Inverse Document Frequency (IDF)
 def calculate_OS_IDF(collection):
@@ -36,42 +35,40 @@ def calculate_OS_IDF(collection):
     document_frequencies = {}
     inverse_document_frequencies = {}
 
-    # Tokenize documents
-    tokenized_documents = [doc.split() for doc in collection]
+    # Tokenize documents into terms using spaCy
+    tokenized_documents = [nlp(doc) for doc in collection]
 
-    # Calculate document frequency (DF) for each term
+    # Extract all noun and proper noun terms from each document
+    noun_terms_documents = []
     for doc in tokenized_documents:
-        unique_terms = set(doc)
+        noun_terms = [token.text for token in doc if is_noun_or_proper_noun(token)]
+        noun_terms_documents.append(noun_terms)
+        unique_terms = set(noun_terms)
         for term in unique_terms:
             document_frequencies[term] = document_frequencies.get(term, 0) + 1
 
-    # Total number of documents
+    # Total number of documents (each row counts as one document)
     total_documents = len(collection)
 
     # Calculate IDF score for each term
     for term, df in document_frequencies.items():
         inverse_document_frequencies[term] = round(math.log(total_documents / (1 + df)), 2)
 
-    # Calculate average IDF per document and identify rarest terms
+    # Calculate average IDF per document (each row counts as one document)
     average_term_idf_per_document = []
     max_idf_scores = []
     rarest_terms = []
 
-    for doc in tokenized_documents:
+    for doc in noun_terms_documents:
         doc_idf_values = [inverse_document_frequencies.get(term, 0) for term in doc]
         if doc_idf_values:
             avg_idf = round(sum(doc_idf_values) / len(doc), 2)
-            # Sort terms by IDF score
             sorted_terms = sorted(set(doc), key=lambda term: -inverse_document_frequencies.get(term, 0))
-            # Filter out adjectives, verbs, and adverbs
-            filtered_sorted_terms = [term for term in sorted_terms if is_noun(term)]
-            # Take top 10 terms
-            rarest_term = ', '.join(filtered_sorted_terms[:10])
-            # Corresponding IDF scores
-            max_idf = [inverse_document_frequencies.get(term, 0) for term in filtered_sorted_terms[:10]]
+            rarest_term = ', '.join(sorted_terms[:10])
+            max_idf = [f"{inverse_document_frequencies.get(term, 0):.2f}" for term in sorted_terms[:10]]
         else:
             avg_idf = 0
-            max_idf = [0] * 10
+            max_idf = [f"{0:.2f}" for _ in range(10)]
             rarest_term = ""
 
         average_term_idf_per_document.append(f"{avg_idf:.2f}")
