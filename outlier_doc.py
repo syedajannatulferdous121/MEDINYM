@@ -226,11 +226,12 @@ def upload_csv():
 
         output_df = pd.DataFrame({
             'Index': range(1, len(preprocessed_documents) + 1),
+            'Original Text': original_documents,
             'Preprocessed Text': preprocessed_documents,
             'Rarity Score': average_idf_scores,
             'Rarest Terms': rarest_terms,
-            'Term Rarity Score': max_idf_scores,
-            'Original Text': original_documents
+            'Term Rarity Score': max_idf_scores
+
         })
 
         # Calculate the statistics for the histogram
@@ -506,9 +507,9 @@ def upload_csv():
     const rows = Array.from(table.rows).slice(1); // Skip the header row
 
     rows.forEach(row => {
-        const termsCell = row.cells[3];
+        const termsCell = row.cells[4];
         const terms = termsCell.getAttribute('data-original-terms').split(', ');
-        const termScoresCell = row.cells[4];
+        const termScoresCell = row.cells[5];
         const termScores = JSON.parse(termScoresCell.getAttribute('data-original-scores'));
 
         const sortedIndices = termScores.map((score, index) => index)
@@ -520,7 +521,7 @@ def upload_csv():
         termsCell.innerText = topTerms.join(', ');
         termScoresCell.innerText = topScores.join(', '); // Changed this line
 
-        const originalTextCell = row.cells[1];
+        const originalTextCell = row.cells[2];
         const originalText = originalTextCell.getAttribute('data-original-text');
         const updatedText = highlightTerms(originalText, topTerms, topScores);
         originalTextCell.innerHTML = updatedText;
@@ -564,9 +565,9 @@ function generateColorGradient(scores, maxAlpha = 0.8, alphaGap = 0.05) {
 // Ensure original terms and scores are stored in data attributes when the table is generated
 $(document).ready(function() {
     $('table tbody tr').each(function() {
-        const originalTextCell = $(this).find('td:eq(1)');
-        const termsCell = $(this).find('td:eq(3)');
-        const termScoresCell = $(this).find('td:eq(4)');
+        const originalTextCell = $(this).find('td:eq(2)');
+        const termsCell = $(this).find('td:eq(4)');
+        const termScoresCell = $(this).find('td:eq(5)');
 
 
 
@@ -588,7 +589,7 @@ $(document).ready(function () {
 
         // Ensure original rarity scores are stored in data attributes when the table is generated
         $('table tbody tr').each(function () {
-            const rarityScoreCell = $(this).find('td:eq(2)');
+            const rarityScoreCell = $(this).find('td:eq(3)');
             rarityScoreCell.attr('data-original-rarity', rarityScoreCell.text());
         });
     });
@@ -600,8 +601,8 @@ $(document).ready(function () {
 
         if (column === 'rarity') {
             rows.sort((rowA, rowB) => {
-                const cellA = parseFloat(rowA.cells[2].innerText);
-                const cellB = parseFloat(rowB.cells[2].innerText);
+                const cellA = parseFloat(rowA.cells[3].innerText);
+                const cellB = parseFloat(rowB.cells[3].innerText);
                 return order === 'ascending' ? cellA - cellB : cellB - cellA;
             });
 
@@ -615,8 +616,8 @@ $(document).ready(function () {
         } else if (order === 'default') {
             // Reset to default order
             rows.sort((rowA, rowB) => {
-                const cellA = parseFloat($(rowA).find('td:eq(2)').attr('data-original-rarity'));
-                const cellB = parseFloat($(rowB).find('td:eq(2)').attr('data-original-rarity'));
+                const cellA = parseFloat($(rowA).find('td:eq(3)').attr('data-original-rarity'));
+                const cellB = parseFloat($(rowB).find('td:eq(3)').attr('data-original-rarity'));
                 return cellA - cellB;
             });
 
@@ -639,4 +640,4 @@ $(document).ready(function () {
 
 
 if __name__ == '__main__':
-    app.run(port=8081, debug=True)
+    app.run(port=8084, debug=True)
