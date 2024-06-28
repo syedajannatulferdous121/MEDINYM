@@ -14,6 +14,7 @@ import numpy as np
 import mpld3
 from mpld3 import plugins
 import spacy
+from IPython.display import display
 
 # Load the spaCy language model
 nlp = spacy.load('en_core_web_sm')
@@ -234,6 +235,8 @@ def upload_csv():
 
         })
 
+
+
         # Calculate the statistics for the histogram
         rarity_scores = list(map(float, average_idf_scores))
         mean_score = np.mean(rarity_scores)
@@ -321,7 +324,7 @@ def upload_csv():
             + '<b data-toggle="tooltip" title="Click to sort rarity scores">Rarity <br> Score</b> <i class="fas fa-filter" style="color: white;"></i>'
             + '</button>'
             + '<div class="dropdown-menu" aria-labelledby="rarityDropdown">'
-            + '<a class="dropdown-item" href="#" onclick="sortTable(\'rarity\', \'default\')">Default</a>'
+
             + '<a class="dropdown-item" href="#" onclick="sortTable(\'rarity\', \'ascending\')">Ascending</a>'
             + '<a class="dropdown-item" href="#" onclick="sortTable(\'rarity\', \'descending\')">Descending</a>'
             + '</div></div></th>'
@@ -366,6 +369,31 @@ def upload_csv():
                     .table th {
                         background-color: #66cc00;
                         color: white;
+                        
+                    }
+                    .th:nth-child(even),td:nth-child(2) {
+                        max-width: 300px; /* Adjust the width as per your requirement */
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: normal; /* Allow text to wrap */
+                        word-wrap: break-word; /* Ensure long words break into new lines */
+                        background-color: rgb(215, 244, 223);
+                    }
+
+                    .th:nth-child(even),td:nth-child(3) {
+                        background-color: rgb(240, 255, 240);
+                    }
+                    .th:nth-child(even),td:nth-child(1) {
+                        background-color: rgb(240, 255, 240);
+                    }
+                    .th:nth-child(even),td:nth-child(5) {
+                        background-color: rgb(240, 255, 240);
+                    }
+                    .th:nth-child(even),td:nth-child(4) {
+                        background-color: rgb(215, 244, 223);
+                    }
+                    .th:nth-child(even),td:nth-child(6) {
+                        background-color: rgb(215, 244, 223);
                     }
 
                     .dropdown-menu {
