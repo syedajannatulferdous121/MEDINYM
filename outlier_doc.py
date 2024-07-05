@@ -360,17 +360,76 @@ def upload_csv():
                 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
                 <style>
+                body {
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            color: #333;
+            font-family: 'Arial', sans-serif;
+        }
+        h1 {
+            font-size: 3rem;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: #4a4a4a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: fadeIn 2s ease-in-out;
+        }
+        h1:before, h1:after {
+            content: '';
+            flex: 1;
+            height: 4px;
+            background: #66cc00;
+            margin: 0 10px;
+            animation: slideIn 1s forwards;
+        }
+        @keyframes slideIn {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        .form-group {
+            margin-top: 20px;
+            animation: fadeIn 2s ease-in-out 0.5s;
+        }
+        .form-control-range {
+            width: 100%;
+            cursor: pointer;
+        }
+        #num_terms_label {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #66cc00;
+        }
                     .container {
                         margin-top: 50px;
                     }
                     .highlight {
                         background-color: rgba(255, 0, 0, 0.3); /* Red color with alpha transparency */
                     }
-                    .table th {
-                        background-color: #66cc00;
-                        color: white;
-                        
-                    }
+                    .table-container {
+            margin-top: 30px;
+            overflow-x: auto;
+            animation: fadeIn 2s ease-in-out 1s;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .table th, .table td {
+            padding: 15px;
+            text-align: left;
+            border: 1px solid #343a40;
+            animation: fadeIn 2s ease-in-out;
+        }
+        .table th {
+            background-color: #66cc00;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
                     .th:nth-child(even),td:nth-child(2) {
                         max-width: 300px; /* Adjust the width as per your requirement */
                         overflow: hidden;
@@ -394,6 +453,13 @@ def upload_csv():
                     }
                     .th:nth-child(even),td:nth-child(6) {
                         background-color: rgb(215, 244, 223);
+                    }
+                    
+                    .table, .table th, .table td {
+                    border: 1px solid #343a40 !important; /* Darker border color */
+                    }
+                    .table th, .table td {
+                    border-width: 1px !important; /* Ensures the border width is consistent */
                     }
 
                     .dropdown-menu {
