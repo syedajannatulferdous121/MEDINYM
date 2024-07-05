@@ -79,6 +79,7 @@ def autocorrect_spelling(doc):
     corrected_doc = ' '.join([spell(word) for word in doc.split()])
     return corrected_doc
 
+
 @app.route('/upload', methods=['POST'])
 def upload_csv():
     global preprocessed_documents, sorted_terms, df_global  # Include df_global here
@@ -106,84 +107,168 @@ def upload_csv():
 
         sorted_terms = calculate_OS_IDF(preprocessed_documents)
 
-        output_html = generate_table_html(50, df)
+        # Precompute the initial 50 terms
+        initial_output_html = generate_table_html(50, df)
 
         return render_template_string("""
             <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Find Outlier Word</title>
-                <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-                <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-                <style>
-                    .highlight { background-color: rgba(255, 0, 0, 0.3); }
-                    .table th {
-                        background-color: #66cc00;
-                        color: white;
-                    }
-                    .th:nth-child(even),td:nth-child(3) {
-                        background-color: rgb(240, 255, 240);
-                    }
-                    .th:nth-child(even),td:nth-child(1) {
-                        background-color: rgb(240, 255, 240);
-                    }
-                    .th:nth-child(even),td:nth-child(5) {
-                        background-color: rgb(240, 255, 240);
-                    }
-                    .th:nth-child(even),td:nth-child(2) {
-                        background-color: rgb(215, 244, 223);
-                    }
-                    .th:nth-child(even),td:nth-child(4) {
-                        background-color: rgb(215, 244, 223);
-                    }
-                </style>
-                <script>
-                    $(document).ready(function() {
-                        $("#num_terms").on("input", function() {
-                            var num_terms = $(this).val();
-                            $("#num_terms_label").text(num_terms);
-                            updateTable(num_terms);
-                        });
-                    });
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Outlier Word</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            color: #333;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        h1 {
+            font-size: 3rem;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            color: #4a4a4a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: fadeIn 2s ease-in-out;
+        }
+        h1:before, h1:after {
+            content: '';
+            flex: 1;
+            height: 4px;
+            background: #66cc00;
+            margin: 0 10px;
+            animation: slideIn 1s forwards;
+        }
+        @keyframes slideIn {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        .form-group {
+            margin-top: 20px;
+            animation: fadeIn 2s ease-in-out 0.5s;
+        }
+        .form-control-range {
+            width: 100%;
+            cursor: pointer;
+        }
+        #num_terms_label {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #66cc00;
+        }
+        .table-container {
+            margin-top: 30px;
+            overflow-x: auto;
+            animation: fadeIn 2s ease-in-out 1s;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .table th, .table td {
+            padding: 15px;
+            text-align: left;
+            border: 1px solid #343a40;
+            animation: fadeIn 2s ease-in-out;
+        }
+        .table th {
+            background-color: #66cc00;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .table td:nth-child(even) {
+            background-color: #f0fff0;
+        }
+        .table td:nth-child(odd) {
+            background-color: #d7f4df;
+        }
+        .highlight {
+            background-color: rgba(255, 0, 0, 0.3);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .button-container .btn {
+            background: linear-gradient(45deg, #ff4b1f, #ff9068);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 10px 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .button-container .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $("#num_terms").on("input", function() {
+                var num_terms = $(this).val();
+                $("#num_terms_label").text(num_terms);
+                updateTable(num_terms);
+            });
 
-                    function updateTable(num_terms) {
-                        $.ajax({
-                            url: "/update_table",
-                            method: "POST",
-                            data: { num_terms: num_terms },
-                            success: function(data) {
-                                $("#output_table").html(data);
-                            }
-                        });
+            function updateTable(num_terms) {
+                $.ajax({
+                    url: "/update_table",
+                    method: "POST",
+                    data: { num_terms: num_terms },
+                    success: function(data) {
+                        $("#output_table").html(data);
                     }
-                </script>
-            </head>
-            <body>
-                <div class="container">
-                    <h1 class="text-center mb-4">Find Outlier Word</h1>
-                    <div class="form-group">
-                        <label for="num_terms">Number of Terms: <span id="num_terms_label">50</span></label>
-                        <input type="range" class="form-control-range" id="num_terms" name="num_terms" min="1" max="500" value="50">
-                    </div>
-                    <div id="output_table">
-                        {{ table | safe }}
-                    </div>
-                </div>
-            </body>
-            </html>
-        """, table=output_html)
+                });
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Find Outlier Word</h1>
+        <div class="form-group">
+            <label for="num_terms">Number of Terms: <span id="num_terms_label">50</span></label>
+            <input type="range" class="form-control-range" id="num_terms" name="num_terms" min="1" max="500" value="50">
+        </div>
+        <div class="table-container" id="output_table">
+            {{ table | safe }}
+        </div>
+        
+    </div>
+</body>
+</html>
+
+        """, table=initial_output_html)
 
     except Exception as e:
         return render_template_string(f"<h2>An error occurred: {str(e)}</h2>")
 
+
+
+
 @app.route('/update_table', methods=['POST'])
 def update_table():
-    global df_global
     num_terms = int(request.form['num_terms'])
     output_html = generate_table_html(num_terms, df_global)
-    return output_html
+    return jsonify(output_html)
+
 
 
 def generate_table_html(num_terms, df):
