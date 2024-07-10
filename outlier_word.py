@@ -7,6 +7,15 @@ import spacy
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from autocorrect import Speller
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import io
+import base64
+import numpy as np
+from matplotlib.figure import Figure
+import statistics
+
 
 # Load the spaCy language model
 nlp = spacy.load('en_core_web_sm')
@@ -106,6 +115,42 @@ def upload_csv():
             preprocessed_documents = [autocorrect_spelling(doc) for doc in preprocessed_documents]
 
         sorted_terms = calculate_OS_IDF(preprocessed_documents)
+
+        # Inside the /upload route after calculating the sorted_terms and idf_scores
+        idf_scores = [score for term, score in sorted_terms]
+        mean_score = np.mean(idf_scores)
+        median_score = np.median(idf_scores)
+        std_dev_score = np.std(idf_scores)  # Use numpy's std function for standard deviation
+
+        fig = Figure()
+        ax = fig.subplots()
+        counts, bins, patches = ax.hist(idf_scores, bins='auto', color='green', alpha=0.7, edgecolor='black')
+
+        # Plot mean, median, and standard deviation lines
+        ax.axvline(mean_score, color='blue', linestyle='-', linewidth=2, label=f'Mean: {mean_score:.2f}')
+        ax.axvline(median_score, color='orange', linestyle='--', linewidth=2, label=f'Median: {median_score:.2f}')
+        ax.axvline(mean_score + std_dev_score, color='yellow', linestyle='--', linewidth=2,
+                   label=f'Standard Deviation: {std_dev_score:.2f}')
+        ax.axvline(mean_score - std_dev_score, color='yellow', linestyle='--', linewidth=2)
+
+        # Set axis limits to ensure the mean lines are visible
+        ax.set_xlim([min(idf_scores) - 1, max(idf_scores) + 1])
+        ax.set_ylim([0, max(counts) + 1])
+
+        ax.set_title('Word Rarity Score Frequencies')
+        ax.set_xlabel('Word Rarity Score')
+        ax.set_ylabel('Frequency')
+        ax.legend()
+
+        # Convert the plot to a PNG image and then to a base64 string
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png')
+        buf.seek(0)
+        histogram_png = base64.b64encode(buf.getvalue()).decode('utf-8')
+        buf.close()
+
+        # Add histogram image to the HTML
+        histogram_html = f'<div style="text-align: center;"><img src="data:image/png;base64,{histogram_png}" alt="Rarity Score Frequencies Histogram"></div>'
 
         # Precompute the initial 50 terms
         initial_output_html = generate_table_html(50, df)
@@ -247,20 +292,20 @@ def upload_csv():
             <label for="num_terms">Number of Terms: <span id="num_terms_label">50</span></label>
             <input type="range" class="form-control-range" id="num_terms" name="num_terms" min="1" max="500" value="50">
         </div>
-        <div class="table-container" id="output_table">
-            {{ table | safe }}
-        </div>
         
+            <div class="table-container" id="output_table">
+             {{ histogram_html|safe }}
+                {{ table | safe }}
+        </div>
+
     </div>
 </body>
 </html>
 
-        """, table=initial_output_html)
+       """, table=initial_output_html, histogram_html=histogram_html)
 
     except Exception as e:
         return render_template_string(f"<h2>An error occurred: {str(e)}</h2>")
-
-
 
 
 @app.route('/update_table', methods=['POST'])
@@ -287,7 +332,7 @@ def generate_table_html(num_terms, df):
             original_text = preprocessed_documents[term_index]
             highlighted_text = re.sub(r'(\b{}\b)'.format(re.escape(term)), r'<span class="highlight">\1</span>', original_text)
             output_data['Index'].append(term_index + 1)
-            output_data['Original Text'].append(df.iloc[term_index, 0])  # Add this line
+            output_data['Original Text'].append(df.iloc[term_index, 0])
             output_data['Preprocessed Text'].append(highlighted_text)
             output_data['Term'].append(term)
             output_data['Term Rarity score'].append(rarity_score)
@@ -336,9 +381,9 @@ def index():
                 <h4 class="card-title">Upload CSV</h4>
             </div>
             <div class="card-body">
-                <form method="post" action="/upload" enctype="multipart/form-data">
+                <form method="post" action="/upload" enctype="multipart/form-data" id="uploadForm">
                     <div class="form-group">
-                        <input type="file" name="file" class="form-control-file">
+                        <input type="file" name="file" class="form-control-file" id="fileInput">
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="enable_automatic_correction" value="1" id="enableCorrectionCheckbox">
@@ -348,8 +393,9 @@ def index():
 
                     </div>
                     <!-- Added tooltip to the upload button -->
-                    <button type="submit" class="btn btn-primary" data-toggle="tooltip"  data-placement="right" title="Upload only one column file!">Upload</button>
+                    <button type="submit" class="btn btn-primary" data-toggle="tooltip"  data-placement="right" title="Upload only one column file!" id="uploadButton" disabled>Upload</button>
                 </form>
+                <div id="alertMessage" class="alert alert-danger mt-2" style="display: none;"></div>
             </div>
         </div>
     </div>
@@ -360,24 +406,34 @@ def index():
         // Activate Bootstrap tooltips
         $(document).ready(function(){
             $('[data-toggle="tooltip"]').tooltip();
-        });
 
-        // Form submission handler
-        $('#uploadForm').on('submit', function(event) {
-            const fileInput = $('input[name="file"]');
-            const file = fileInput[0].files[0];
-            if (!file) {
-                event.preventDefault();
-                $('#alertMessage').text('No file provided').show();
-            } else if (!file.name.endsWith('.csv')) {
-                event.preventDefault();
-                $('#alertMessage').text('Please upload a CSV file').show();
-            }
-        });
+            // Enable the upload button only if a file is selected
+            $('#fileInput').on('change', function() {
+                if ($(this).val()) {
+                    $('#uploadButton').prop('disabled', false);
+                    $('#alertMessage').hide();
+                } else {
+                    $('#uploadButton').prop('disabled', true);
+                }
+            });
 
+            // Form submission handler
+            $('#uploadForm').on('submit', function(event) {
+                const fileInput = $('input[name="file"]');
+                const file = fileInput[0].files[0];
+                if (!file) {
+                    event.preventDefault();
+                    $('#alertMessage').text('No file provided').show();
+                } else if (!file.name.endsWith('.csv')) {
+                    event.preventDefault();
+                    $('#alertMessage').text('Please upload a CSV file').show();
+                }
+            });
+        });
     </script>
 </body>
 </html>
+
     """)
 
 if __name__ == '__main__':
